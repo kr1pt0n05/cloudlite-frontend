@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import logo from "../assets/cloudlite-logo.png";
-import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
-import {faChevronRight} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import {
+  faChevronRight,
+  faKey,
+  faServer,
+  faShieldHalved,
+} from "@fortawesome/free-solid-svg-icons";
 
 const serverUrl = ref("");
 const submittedUrl = ref("");
@@ -23,12 +28,13 @@ function submitServer() {
 </script>
 
 <template>
-  <main class="flex min-h-screen w-full items-center justify-center bg-background p-6 text-foreground">
+  <main class="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
     <section
-      class="grid w-full max-w-230 grid-cols-1 overflow-hidden rounded-2xl border border-border bg-surface shadow-lg md:grid-cols-[1.05fr_1fr]"
+      class="grid min-h-0 flex-1 grid-cols-1 overflow-hidden bg-surface md:grid-cols-[1.05fr_1fr]"
       aria-labelledby="login-title"
     >
-      <div class="relative hidden flex-col justify-between bg-linear-to-br from-primary-soft via-surface to-surface p-8 md:flex">
+      <div class="relative hidden flex-col justify-start gap-12 bg-linear-to-br from-primary-soft
+      via-surface to-surface px-12 py-12 pb-16 md:flex xl:pl-48 xl:pt-32">
         <div>
           <div class="flex items-center gap-2.5">
             <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/25">
@@ -48,10 +54,16 @@ function submitServer() {
             A faster, simpler alternative to heavy self-hosted suites. Built for power users who want control without the bloat.
           </p>
         </div>
-
+        <ul class="space-y-2.5 text-[12px] text-foreground/80">
+          <li class="flex items-center gap-2"><FontAwesomeIcon class="h-4 w-4 text-primary" :icon="faShieldHalved" /> End-to-end encrypted upload sessions</li>
+          <li class="flex items-center gap-2"><FontAwesomeIcon class="h-4 w-4 text-primary" :icon="faServer" />Connect to any CloudLite server</li>
+          <li class="flex items-center gap-2"><FontAwesomeIcon class="h-4 w-4 text-primary" :icon="faKey" /> OAuth, Keycloak & token auth</li>
+        </ul>
       </div>
 
-      <form class="flex flex-col gap-6 p-8" @submit.prevent="submitServer">
+      <form class="flex min-h-0 flex-col justify-start gap-6 overflow-y-auto
+      px-6 py-8 pb-14 sm:px-10 sm:py-12 sm:pb-16 lg:px-12 xl:pr-48 xl:pt-50 sm:pt-32"
+            @submit.prevent="submitServer">
         <div class="flex items-center gap-3 md:hidden">
           <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/25">
             <img :src="logo" alt="" class="h-7 w-7" />
@@ -98,5 +110,9 @@ function submitServer() {
         </p>
       </form>
     </section>
+
+    <footer class="flex shrink-0 flex-col gap-3 border-t border-border bg-surface px-6 py-4 sm:px-10 lg:flex-row lg:items-center lg:justify-end lg:px-12 xl:px-16">
+      <span class="text-right text-[11px] font-medium text-muted-foreground">tauri-build v0.1.0</span>
+    </footer>
   </main>
 </template>
