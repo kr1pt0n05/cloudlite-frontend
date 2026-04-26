@@ -12,9 +12,15 @@
   "app": {
     "windows": [
       {
-        "title": "cloudlite-frontend",
-        "width": 800,
-        "height": 600
+        "title": "CloudLite",
+        "width": 1100,
+        "height": 720,
+        "minWidth": 1100,
+        "minHeight": 720,
+        "maxWidth": 1100,
+        "maxHeight": 720,
+        "resizable": false,
+        "maximizable": false
       }
     ],
     "security": {
