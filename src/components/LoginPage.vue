@@ -1,26 +1,61 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onBeforeUnmount, ref } from "vue";
 import logo from "../assets/cloudlite-logo.png";
+import PopUpWindow from "./PopUpWindow.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
+  faArrowUpRightFromSquare,
   faChevronRight,
   faKey,
   faServer,
   faShieldHalved,
   faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
+import {invoke} from "@tauri-apps/api/core";
 
 const serverUrl = ref("");
 const submittedUrl = ref("");
-const submittedDomain = ref("");
 const urlError = ref("");
+const authorizationPopupOpen = ref(false);
+const authorizationWaiting = ref(false);
+const authorizationCountdown = ref(import.meta.env.VITE_AUTHORIZATION_REDIRECT_TIMEOUT_SECONDS);
+let authorizationTimer: number | undefined;
+
+const redirectUrl = ref();
+
+
+function invokeGetRedirectUrl(): void {
+  invoke("get_redirect_url").then(url => {
+    console.log(url);
+    redirectUrl.value = url;
+  }).catch(error => {
+    console.log(error);
+  })
+}
+
+
+function stopAuthorizationTimer() {
+  if (authorizationTimer) {
+    window.clearInterval(authorizationTimer);
+    authorizationTimer = undefined;
+  }
+}
+
+function resetAuthorizationState() {
+  stopAuthorizationTimer();
+  authorizationWaiting.value = false;
+  authorizationCountdown.value = import.meta.env.VITE_AUTHORIZATION_REDIRECT_TIMEOUT_SECONDS;
+}
 
 function submitServer() {
+  console.log("Hello World!");
+  console.log(authorizationCountdown.value);
+
   const value = serverUrl.value.trim();
 
   submittedUrl.value = "";
-  submittedDomain.value = "";
   urlError.value = "";
+  resetAuthorizationState();
 
   if (!/^https?:\/\//i.test(value)) {
     urlError.value = "URL must start with http:// or https://";
@@ -28,14 +63,40 @@ function submitServer() {
   }
 
   try {
-    const url = new URL(value);
+    new URL(value);
 
     submittedUrl.value = value;
-    submittedDomain.value = url.host;
+    authorizationPopupOpen.value = true;
   } catch {
     urlError.value = "Enter a valid server URL.";
   }
 }
+
+function openAuthorizationUrl() {
+  resetAuthorizationState();
+  authorizationWaiting.value = true;
+
+  authorizationTimer = window.setInterval(() => {
+    authorizationCountdown.value -= 1;
+
+    if (authorizationCountdown.value <= 0) {
+      stopAuthorizationTimer();
+      authorizationPopupOpen.value = false;
+    }
+  }, 1000);
+  invokeRedirectAuth();
+}
+
+function invokeRedirectAuth() {
+  invoke("redirect_auth")
+  .catch(error => {
+    console.log(error);
+  })
+}
+
+onBeforeUnmount(() => {
+  stopAuthorizationTimer();
+});
 </script>
 
 <template>
@@ -111,6 +172,7 @@ function submitServer() {
         <button
           class="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-[13px] font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring/25"
           type="submit"
+          @click="invokeGetRedirectUrl()"
         >
           Continue
           <FontAwesomeIcon class="pl-2" :icon="faChevronRight"/>
@@ -119,16 +181,53 @@ function submitServer() {
         <p v-if="urlError" class="rounded-md border border-border bg-surface-2 px-3 py-2 text-[12px] text-muted-foreground">
           {{ urlError }}
         </p>
-
-        <p v-if="submittedDomain" class="flex items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-2 text-[12px] text-muted-foreground">
-          <FontAwesomeIcon class="h-4 w-4 animate-spin text-primary" :icon="faSpinner" />
-          <span>Connecting to <span class="font-medium text-foreground">{{ submittedDomain }}</span></span>
-        </p>
       </form>
     </section>
 
     <footer class="flex shrink-0 flex-col gap-3 border-t border-border bg-surface px-6 py-4 sm:px-10 lg:flex-row lg:items-center lg:justify-end lg:px-12 xl:px-16">
       <span class="text-right text-[11px] font-medium text-muted-foreground">tauri-build v0.1.0</span>
     </footer>
+
+    <PopUpWindow
+      v-model="authorizationPopupOpen"
+      title="Authorize CloudLite"
+      description="Open the authorization URL in your browser to continue connecting this server."
+      @close="resetAuthorizationState"
+    >
+      <div class="space-y-4">
+        <div>
+          <span class="mb-1.5 block text-[12px] font-medium">Authorization URL</span>
+          <div class="rounded-md border border-input bg-surface-2 px-3 py-2">
+            <p class="break-all font-mono text-[12px] leading-relaxed text-foreground">
+              {{ redirectUrl }}
+            </p>
+          </div>
+        </div>
+
+        <div
+          v-if="authorizationWaiting"
+          class="flex items-center gap-3 rounded-md border border-border bg-surface-2 px-3 py-2 text-[12px] text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          <FontAwesomeIcon class="h-4 w-4 animate-spin text-primary" :icon="faSpinner" />
+          <span>
+            Waiting for authorization
+            <span class="font-medium text-foreground">{{ authorizationCountdown }}s</span>
+          </span>
+        </div>
+      </div>
+
+      <template #footer>
+        <button
+          class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-[13px] font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring/25 sm:w-auto"
+          type="button"
+          @click="openAuthorizationUrl"
+        >
+          Open
+          <FontAwesomeIcon class="h-4 w-4" :icon="faArrowUpRightFromSquare" />
+        </button>
+      </template>
+    </PopUpWindow>
   </main>
 </template>

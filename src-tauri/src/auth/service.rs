@@ -3,7 +3,6 @@ use oauth2::{AuthorizationCode, AuthUrl, ClientId, CsrfToken, PkceCodeChallenge,
 use oauth2::basic::BasicClient;
 use tauri_plugin_opener::OpenerExt;
 
-use crate::auth::error;
 use crate::auth::error::AuthError;
 
 pub struct AuthConfig {
@@ -13,8 +12,9 @@ pub struct AuthConfig {
     pub redirect_url: String,
 }
 
-struct CodeChallenge {
-    verifier: PkceCodeVerifier,
+struct PendingLogin {
+    verifier: Option<PkceCodeVerifier>,
+    redirect_url: Option<String>,
 }
 
 struct AuthToken{
@@ -26,7 +26,7 @@ struct AuthToken{
 pub struct AuthService {
     client: BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointSet>,
 
-    code_challenge: Mutex<Option<CodeChallenge>>,
+    code_challenge: Mutex<PendingLogin>,
     token: Option<AuthToken>,
 }
 impl AuthService {
@@ -36,10 +36,10 @@ impl AuthService {
             .set_auth_uri(AuthUrl::new(config.auth_url.to_string())?)
             .set_token_uri(TokenUrl::new(config.token_url.to_string())?)
             .set_redirect_uri(RedirectUrl::new(config.redirect_url.to_string())?);
-        Ok(AuthService{client, code_challenge: Mutex::new(None), token: None})
+        Ok(AuthService{client, code_challenge: Mutex::new(PendingLogin{verifier: None, redirect_url: None}), token: None})
     }
 
-    pub async fn start_login(&self, app: tauri::AppHandle) -> Result<(), AuthError> {
+    pub async fn get_redirect_url(&self) -> Result<String, AuthError> {
         let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
         // Generate the full authorization URL.
@@ -56,12 +56,30 @@ impl AuthService {
                 .code_challenge
                 .lock()
                 .map_err(|_| AuthError::MutexPoisoned)?;
-            *code_challenge = Some(CodeChallenge{verifier: pkce_verifier});
+            *code_challenge = PendingLogin {
+                verifier: Some(pkce_verifier),
+                redirect_url: Some(auth_url.to_string()),
+            };
         }
+        Ok(auth_url.to_string())
+    }
+
+    pub async fn redirect_auth(&self, app: tauri::AppHandle) -> Result<(), AuthError> {
+        let redirect_url = {
+            let mut pending_login = self
+                .code_challenge
+                .lock()
+                .map_err(|_| AuthError::MutexPoisoned)?;
+
+            pending_login
+                .redirect_url.
+                take()
+                .ok_or(AuthError::MissingAuthURL)?
+        };
 
         // Open Auth URL in users native browser
         app.opener()
-            .open_url(auth_url, None::<&str>)
+            .open_url(redirect_url, None::<&str>)
             .expect("Should open in browser");
 
         Ok(())
@@ -77,19 +95,22 @@ impl AuthService {
             .expect("Client should build");
 
         let pkce_verifier = {
-            let pkce_verifier = self.code_challenge
+            let mut pending_login = self
+                .code_challenge
                 .lock()
-                .unwrap()
+                .map_err(|_| AuthError::MutexPoisoned)?;
+
+            pending_login
+                .verifier
                 .take()
-                .ok_or(AuthError::MissingPkceVerifier)?;
-            pkce_verifier
+                .ok_or(AuthError::MissingPkceVerifier)?
         };
 
         // ToDo: Check that code returned matches csrf_token
 
         let _token_result = self.client
             .exchange_code(AuthorizationCode::new("auth_code".to_string()))
-            .set_pkce_verifier(pkce_verifier.verifier)
+            .set_pkce_verifier(pkce_verifier)
             .request_async(&client)
             .await;
 
