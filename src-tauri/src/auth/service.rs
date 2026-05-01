@@ -66,14 +66,14 @@ impl AuthService {
 
     pub async fn redirect_auth(&self, app: tauri::AppHandle) -> Result<(), AuthError> {
         let redirect_url = {
-            let mut pending_login = self
+            let pending_login = self
                 .code_challenge
                 .lock()
                 .map_err(|_| AuthError::MutexPoisoned)?;
 
             pending_login
-                .redirect_url.
-                take()
+                .redirect_url
+                .clone()
                 .ok_or(AuthError::MissingAuthURL)?
         };
 

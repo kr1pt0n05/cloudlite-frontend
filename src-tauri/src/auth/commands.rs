@@ -10,7 +10,7 @@ pub async fn get_redirect_url(state: tauri::State<'_, AppState>) -> Result<Strin
         AuthError::MutexPoisoned => "Mutex poisoned".to_string(),
         AuthError::MissingAuthURL => "Auth URL is missing".to_string(),
     })?;
-    Ok((auth_url))
+    Ok(auth_url)
 }
 
 #[tauri::command]

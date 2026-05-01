@@ -23,6 +23,8 @@ let authorizationTimer: number | undefined;
 
 const redirectUrl = ref();
 
+const secs = import.meta.env.VITE_AUTHORIZATION_REDIRECT_TIMEOUT_SECONDS;
+
 
 function invokeGetRedirectUrl(): void {
   invoke("get_redirect_url").then(url => {
@@ -49,7 +51,7 @@ function resetAuthorizationState() {
 
 function submitServer() {
   console.log("Hello World!");
-  console.log(authorizationCountdown.value);
+  console.log(secs);
 
   const value = serverUrl.value.trim();
 
