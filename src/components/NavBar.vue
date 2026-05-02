@@ -3,12 +3,9 @@ import logo from "../assets/cloudlite-logo.png";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
-  faClockRotateLeft,
   faFolderOpen,
   faGear,
   faHardDrive,
-  faRotate,
-  faShareNodes,
   faUpload,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -21,13 +18,10 @@ type NavItem = {
 
 const primary: NavItem[] = [
   { to: "/files", label: "My Files", icon: faFolderOpen },
-  { to: "/shared", label: "Shared", icon: faShareNodes },
-  { to: "/recent", label: "Recent", icon: faClockRotateLeft },
 ];
 
 const activity: NavItem[] = [
   { to: "/uploads", label: "Uploads", icon: faUpload, badge: "3" },
-  { to: "/sync", label: "Sync Status", icon: faRotate },
 ];
 
 const footer: NavItem[] = [{ to: "/settings", label: "Settings", icon: faGear }];

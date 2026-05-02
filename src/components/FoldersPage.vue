@@ -59,8 +59,6 @@ const filteredFolders = computed(() => {
   return folders.value.filter((folder) => folder.name.toLowerCase().includes(query) || folder.owner.toLowerCase().includes(query));
 });
 
-const totalFiles = computed(() => folders.value.reduce((sum, folder) => sum + folder.files, 0));
-const totalSubfolders = computed(() => folders.value.reduce((sum, folder) => sum + folder.folders, 0));
 
 function replaceSelected(next: Set<string>) {
   selected.value = next;
@@ -154,10 +152,6 @@ function createFolder() {
         </div>
 
         <div class="flex shrink-0 items-center gap-2">
-          <button class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-[12px] font-medium hover:bg-surface-hover" type="button">
-            <FontAwesomeIcon class="h-3.5 w-3.5" :icon="faFilter" />
-            Filter
-          </button>
           <button
             class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-[12px] font-medium hover:bg-surface-hover"
             type="button"
@@ -174,24 +168,6 @@ function createFolder() {
       </div>
     </header>
 
-    <section class="grid gap-3 border-b border-border bg-background px-4 py-3 md:grid-cols-3">
-      <div class="rounded-lg border border-border bg-surface px-3 py-2 shadow-xs">
-        <div class="text-[11px] font-medium text-muted-foreground">Root folders</div>
-        <div class="mt-1 text-[20px] font-semibold leading-none">{{ folders.length }}</div>
-      </div>
-      <div class="rounded-lg border border-border bg-surface px-3 py-2 shadow-xs">
-        <div class="text-[11px] font-medium text-muted-foreground">Nested content</div>
-        <div class="mt-1 text-[20px] font-semibold leading-none">{{ totalSubfolders }} folders · {{ totalFiles }} files</div>
-      </div>
-      <div class="rounded-lg border border-border bg-surface px-3 py-2 shadow-xs">
-        <div class="text-[11px] font-medium text-muted-foreground">Sync status</div>
-        <div class="mt-1 flex items-center gap-1.5 text-[13px] font-medium">
-          <FontAwesomeIcon class="h-3.5 w-3.5 text-success" :icon="faCheckCircle" />
-          Changes saved
-        </div>
-      </div>
-    </section>
-
     <div
       v-if="selected.size > 0"
       class="flex items-center gap-3 border-b border-border bg-primary-soft px-4 py-2 text-[12px] text-primary"
@@ -200,10 +176,6 @@ function createFolder() {
       <button class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-primary/10" type="button">
         <FontAwesomeIcon class="h-3.5 w-3.5" :icon="faDownload" />
         Download
-      </button>
-      <button class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-primary/10" type="button">
-        <FontAwesomeIcon class="h-3.5 w-3.5" :icon="faShareNodes" />
-        Share
       </button>
       <button class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-primary/10" type="button" @click="deleteSelected">
         <FontAwesomeIcon class="h-3.5 w-3.5" :icon="faTrash" />
@@ -314,10 +286,6 @@ function createFolder() {
                 <button class="flex w-full items-center gap-2.5 px-3 py-1.5 text-[12px] hover:bg-surface-hover" type="button" @click="beginRename(folder)">
                   <FontAwesomeIcon class="h-3.5 w-3.5 text-muted-foreground" :icon="faPen" />
                   Rename
-                </button>
-                <button class="flex w-full items-center gap-2.5 px-3 py-1.5 text-[12px] hover:bg-surface-hover" type="button">
-                  <FontAwesomeIcon class="h-3.5 w-3.5 text-muted-foreground" :icon="faShareNodes" />
-                  Share
                 </button>
                 <button class="flex w-full items-center gap-2.5 px-3 py-1.5 text-[12px] hover:bg-surface-hover" type="button">
                   <FontAwesomeIcon class="h-3.5 w-3.5 text-muted-foreground" :icon="faDownload" />
