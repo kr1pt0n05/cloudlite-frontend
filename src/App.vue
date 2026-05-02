@@ -1,20 +1,19 @@
 <script setup lang="ts">
-import {computed, onMounted, ref} from "vue";
+import {computed, onMounted} from "vue";
 import { RouterView, useRoute } from "vue-router";
-import NavBar from "./components/NavBar.vue";
-import {invoke} from "@tauri-apps/api/core";
+import NavBar from "./shared/components/navigation/NavBar.vue";
 import {router} from "./routes.ts";
+import { isAuthenticated as fetchIsAuthenticated } from "./features/login/services/authService";
 
 const route = useRoute();
 const showShell = computed(() => route.name !== "login");
-const isAuthenticated = ref<boolean>(false);
-
 
 onMounted(() => {
-  invoke<boolean>("is_authenticated")
+  fetchIsAuthenticated()
       .then(isAuth => {
-        isAuthenticated.value = isAuth;
-        router.push({ name: 'files' })
+        if (isAuth) {
+          router.push({ name: 'files' })
+        }
     })
       .catch(error => {
     console.log(error);

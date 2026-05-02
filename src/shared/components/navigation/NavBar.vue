@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import logo from "../assets/cloudlite-logo.png";
+import logo from "../../../assets/cloudlite-logo.png";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
