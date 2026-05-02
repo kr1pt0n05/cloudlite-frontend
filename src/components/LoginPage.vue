@@ -12,6 +12,9 @@ import {
   faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
 import {invoke} from "@tauri-apps/api/core";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
 
 const serverUrl = ref("");
 const submittedUrl = ref("");
@@ -93,6 +96,9 @@ function openAuthorizationUrl() {
 
 function invokeRedirectAuth() {
   invoke("confirm_login")
+  .then(() => {
+    router.push("/files");
+  })
   .catch(error => {
     console.log(error);
   })
