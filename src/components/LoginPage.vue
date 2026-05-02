@@ -27,7 +27,7 @@ const secs = import.meta.env.VITE_AUTHORIZATION_REDIRECT_TIMEOUT_SECONDS;
 
 
 function invokeGetRedirectUrl(): void {
-  invoke("get_redirect_url").then(url => {
+  invoke("begin_login").then(url => {
     console.log(url);
     redirectUrl.value = url;
   }).catch(error => {
@@ -90,7 +90,7 @@ function openAuthorizationUrl() {
 }
 
 function invokeRedirectAuth() {
-  invoke("redirect_auth")
+  invoke("confirm_login")
   .catch(error => {
     console.log(error);
   })

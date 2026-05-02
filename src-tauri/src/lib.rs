@@ -18,7 +18,7 @@ pub fn run() {
                 redirect_url: "http://localhost:4200".to_string(),
             }).expect("auth service should initialize"),
         })
-        .invoke_handler(tauri::generate_handler![auth::commands::get_redirect_url, auth::commands::redirect_auth])
+        .invoke_handler(tauri::generate_handler![auth::commands::begin_login, auth::commands::confirm_login])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
