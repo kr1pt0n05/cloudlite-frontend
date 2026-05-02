@@ -24,3 +24,12 @@ pub async fn confirm_login(app: tauri::AppHandle, state: tauri::State<'_, AppSta
     })?;
     Ok(())
 }
+
+
+#[tauri::command]
+pub fn is_authenticated(state: tauri::State<'_, AppState>) -> Result<bool, String> {
+    state.auth.is_authenticated().map_err(|e| match e {
+        AuthError::MutexPoisoned => "Mutex poisoned".to_string(),
+        _ => "An unexpected error occurred".to_string(),
+    })
+}

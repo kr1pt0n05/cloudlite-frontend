@@ -1,5 +1,7 @@
 use std::collections::HashMap;
+use std::ops::Deref;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use axum::extract::{Query, State};
 use axum::Router;
 use axum::routing::get;
@@ -37,7 +39,7 @@ struct PendingLogin {
 
 struct AuthToken{
     access_token: String,
-    expires_in: std::time::Duration,
+    valid_until: std::time::Instant,
     refresh_token: String,
 }
 
@@ -45,6 +47,8 @@ pub struct AuthService {
     client: BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointSet>,
     state: Mutex<AuthState>,
 }
+
+
 impl AuthService {
     pub fn new(config: AuthConfig) -> Result<Self, oauth2::url::ParseError> {
         let client = BasicClient::new(
@@ -151,11 +155,21 @@ impl AuthService {
         let mut state = self.state.lock().map_err(|_| AuthError::MutexPoisoned)?;
         *state = AuthState::Authenticated(AuthToken {
             access_token: token_result.access_token().secret().to_string(),
-            expires_in: token_result.expires_in().unwrap_or(std::time::Duration::from_secs(3600)),
+            valid_until: Instant::now() + token_result.expires_in().unwrap_or_default(),
             refresh_token: token_result.refresh_token().map(|t| t.secret().to_string()).unwrap_or_default(),
         });
 
         Ok(())
+    }
+
+    // Returns true, if JWT is present and at least 5 minutes valid. Returns false if no token is present or token is expired. Returns error if mutex is poisoned.
+    pub fn is_authenticated(&self) -> Result<bool, AuthError> {
+        let mut state = self.state.lock().map_err(|_| AuthError::MutexPoisoned)?;
+        match &mut *state {
+            AuthState::Authenticated(token) => Ok(token.valid_until > Instant::now() + Duration::from_secs(300)),
+            _ => return Ok(false),
+        }
+        
     }
 
     async fn start_webserver(tx_code: tokio::sync::oneshot::Sender<AuthResponse>, rx_shutdown: tokio::sync::oneshot::Receiver<String>) -> Result<(), AuthError> {
