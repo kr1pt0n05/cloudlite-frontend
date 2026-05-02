@@ -3,5 +3,10 @@ pub enum AuthError {
     MissingPkceVerifier,
     MissingAuthURL,
     TokenRequestFailed(String),
-    MutexPoisoned
+    MutexPoisoned,
+    ServerStartFailed,
+    UnexpectedState,
+    CodeExchangeFailed,
+    MissingCsrfToken,
+    InvalidCSRFToken,
 }
