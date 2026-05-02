@@ -178,7 +178,7 @@ impl AuthService {
 
     // ToDo: Rewrite this more cleanly
     // ToDo: Proper error handling
-    async fn auth_code(Query(params): Query<HashMap<String, String>>, State(state): State<Arc<Mutex<Option<(tokio::sync::oneshot::Sender<AuthResponse>)>>>>) {
+    async fn auth_code(Query(params): Query<HashMap<String, String>>, State(state): State<Arc<Mutex<Option<(tokio::sync::oneshot::Sender<AuthResponse>)>>>>) -> &'static str {
         let code = params.get("code");
         let csrf_token = params.get("state"); // CSRF token
 
@@ -193,6 +193,7 @@ impl AuthService {
         let channel = state.lock().unwrap().take();
         if channel.is_none(){panic!("Channel was already taken")};
         channel.unwrap().send(auth_response).ok();
+        "Login ADD_STATE_HERE. You can close this page."
     }
 
 }

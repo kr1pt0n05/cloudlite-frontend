@@ -75,17 +75,19 @@ function submitServer() {
 }
 
 function openAuthorizationUrl() {
-  resetAuthorizationState();
-  authorizationWaiting.value = true;
+  if(!authorizationWaiting.value) {
+    authorizationWaiting.value = true;
 
-  authorizationTimer = window.setInterval(() => {
-    authorizationCountdown.value -= 1;
+    authorizationTimer = window.setInterval(() => {
+      authorizationCountdown.value -= 1;
 
-    if (authorizationCountdown.value <= 0) {
-      stopAuthorizationTimer();
-      authorizationPopupOpen.value = false;
-    }
-  }, 1000);
+      if (authorizationCountdown.value <= 0) {
+        stopAuthorizationTimer();
+        authorizationPopupOpen.value = false;
+      }
+    }, 1000);
+  }
+
   invokeRedirectAuth();
 }
 
