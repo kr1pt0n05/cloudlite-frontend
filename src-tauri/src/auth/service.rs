@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use axum::extract::{Query, State};
@@ -163,14 +162,27 @@ impl AuthService {
     }
 
     // Returns true, if JWT is present and at least 5 minutes valid. Returns false if no token is present or token is expired. Returns error if mutex is poisoned.
+    // ToDo: Take JWT as argument to avoid double-locking
+    // ToDo: Before throwing error, change to AuthState::LoggedOut
     pub fn is_authenticated(&self) -> Result<bool, AuthError> {
         let mut state = self.state.lock().map_err(|_| AuthError::MutexPoisoned)?;
         match &mut *state {
             AuthState::Authenticated(token) => Ok(token.valid_until > Instant::now() + Duration::from_secs(300)),
-            _ => return Ok(false),
+            _ => Ok(false),
         }
-        
     }
+
+    pub async fn get_access_token(&self) -> Result<String, AuthError> {
+        if self.is_authenticated()? {
+            let state = self.state.lock().map_err(|_| AuthError::MutexPoisoned)?;
+            if let AuthState::Authenticated(token) = &*state {
+                return Ok(token.access_token.clone());
+            }
+        }
+        // ToDo: Request access_token if user is not authenticated anymore
+        Err(AuthError::UnexpectedState)
+    }
+
 
     async fn start_webserver(tx_code: tokio::sync::oneshot::Sender<AuthResponse>, rx_shutdown: tokio::sync::oneshot::Receiver<String>) -> Result<(), AuthError> {
         let shared_state = Arc::new(Mutex::new(Some((tx_code))));

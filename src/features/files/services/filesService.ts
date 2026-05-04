@@ -1,3 +1,5 @@
+import {invoke} from "@tauri-apps/api/core";
+
 export type SyncState = "synced" | "syncing" | "pending";
 
 export type RootFolder = {
@@ -68,4 +70,9 @@ export async function deleteRootFolder(id: string): Promise<void> {
 
 export async function deleteRootFolders(ids: Set<string>): Promise<void> {
   rootFolders = rootFolders.filter((folder) => !ids.has(folder.id));
+}
+
+
+export function getChangelogs(): Promise<void> {
+  return invoke<void>("get_change_logs");
 }

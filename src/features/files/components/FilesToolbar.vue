@@ -6,6 +6,7 @@ import {
   faMagnifyingGlass,
   faUpload,
 } from "@fortawesome/free-solid-svg-icons";
+import {invoke} from "@tauri-apps/api/core";
 
 defineProps<{
   search: string;
@@ -16,6 +17,11 @@ const emit = defineEmits<{
   createFolder: [];
   upload: [];
 }>();
+
+function trigger() {
+  invoke<void>("get_change_logs");
+}
+
 </script>
 
 <template>
@@ -50,7 +56,7 @@ const emit = defineEmits<{
         <button
           class="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
           type="button"
-          @click="emit('upload')"
+          @click="trigger"
         >
           <FontAwesomeIcon class="h-3.5 w-3.5" :icon="faUpload" />
           Upload
