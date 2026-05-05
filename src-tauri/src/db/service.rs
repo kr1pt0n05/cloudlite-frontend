@@ -48,8 +48,7 @@ impl DBService {
     }
 
     pub async fn create_changelogs_if_not_exists(&self) -> Result<(), sqlx::Error> {
-        sqlx::query_as!(
-            Changelog,
+        sqlx::query(
             "CREATE TABLE IF NOT EXISTS changelogs (
                 id INTEGER PRIMARY KEY,
                 event_type VARCHAR(10) NOT NULL,
@@ -66,7 +65,6 @@ impl DBService {
     // ToDo: Might implement batch inserting
     pub async fn save_changelog(&self, log: Changelog) -> Result<Status, sqlx::Error> {
         let result = sqlx::query!(
-            Changelog,
             "INSERT INTO changelogs (id, event_type, entity_type, timestamp, file_id, folder_id, user_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             log.id,
             log.event_type,
@@ -76,11 +74,15 @@ impl DBService {
             log.folder_id,
             log.user_id
         ).execute(&self.pool)
-            .await?;
+            .await;
 
         let status = match result {
-            Ok(_) => Status{id: log.id, success: true, error: None},
-            Err(e) => Status{id: log.id, success: false, error: e.message},
+            Ok(_) => Status { id: log.id, success: true, error: None },
+            Err(e) => Status {
+                id: log.id,
+                success: false,
+                error: Some(e.to_string()),
+            },
         };
         Ok(status)
     }
