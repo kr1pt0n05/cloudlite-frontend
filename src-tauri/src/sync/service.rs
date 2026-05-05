@@ -1,0 +1,38 @@
+use crate::api::service::ApiService;
+use crate::db::service::{Changelog, DBService, Status};
+
+pub struct SyncService {
+    api: ApiService,
+    db: DBService
+}
+
+impl SyncService {
+    pub fn new(api: ApiService, db: DBService) -> SyncService {
+        Self { api, db }
+    }
+
+
+    pub async fn run_sync(&self) {}
+
+    // ToDo: Probably lock the changelog table?
+    // ToDo: Remove expect
+    async fn sync_changelogs(&self) {
+        // Retrieve latest changelogs id
+        let id = self.db.get_latest_changelog_id().await.expect("Failed to get latest changelog id");
+
+        // Fetch remote changelogs with latest id
+        // ToDo: Add pagination
+        let changelogs: Vec<Changelog> = self.api.get_latest_changelogs(id).await.expect("Failed to get latest changelogs");
+
+        // Insert into db
+        // ToDo: Might implement batching
+        for changelog in changelogs {
+            let changelog: Status = self.db.save_changelog(changelog).await.expect("Failed to save changelog");
+            // Notify frontend
+            
+        }
+
+
+    }
+
+}
