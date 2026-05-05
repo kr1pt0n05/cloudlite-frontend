@@ -569,7 +569,6 @@ dependencies = [
  "oauth2",
  "reqwest 0.13.3",
  "serde",
- "serde_json",
  "sqlx",
  "strum_macros",
  "tauri",
