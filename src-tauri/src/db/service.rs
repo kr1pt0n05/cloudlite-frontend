@@ -1,5 +1,7 @@
+use serde::Deserialize;
 use sqlx::sqlite::SqlitePoolOptions;
 
+#[derive(Deserialize)]
 #[derive(sqlx::Type, strum_macros::Display)]
 enum EventType {
     CREATE,
@@ -9,18 +11,20 @@ enum EventType {
     EDIT
 }
 
+#[derive(Deserialize)]
 #[derive(sqlx::Type, strum_macros::Display)]
 enum EntityType {
     DIRECTORY,
     FILE
 }
 
-struct Status {
+pub struct Status {
     id: i64,
     success: bool,
     error: Option<String>,
 }
 
+#[derive(Deserialize)]
 pub struct Changelog {
     id: i64,
     event_type: EventType,
@@ -60,6 +64,14 @@ impl DBService {
             );"
         ).execute(&self.pool).await?;
         Ok(())
+    }
+
+    pub async fn get_latest_changelog_id(&self) -> Result<i64, sqlx::Error> {
+        let result = sqlx::query!(
+            "SELECT id FROM changelogs ORDER BY id DESC LIMIT 1"
+        ).fetch_one(&self.pool)
+        .await?;
+        Ok(result.id)
     }
 
     // ToDo: Might implement batch inserting
