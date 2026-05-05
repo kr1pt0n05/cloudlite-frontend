@@ -1,11 +1,12 @@
 mod auth;
 mod api;
 mod db;
+mod sync;
 
 use std::sync::Arc;
 use crate::auth::service::{AuthConfig, AuthService};
 use crate::api::service::{ApiService};
-use crate::api::commands::{get_change_logs};
+//use crate::api::commands::{get_latest_changelogs};
 use crate::auth::commands::{begin_login, confirm_login, is_authenticated};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -16,7 +17,7 @@ pub fn run() {
         auth_url: "http://localhost:8080/realms/development/protocol/openid-connect/auth".to_string(),
         token_url: "http://localhost:8080/realms/development/protocol/openid-connect/token".to_string(),
         redirect_url: "http://localhost:4200".to_string(),
-    }).expect("auth service should initialize"));
+    }).expect("auth sync should initialize"));
 
     let api_service = Arc::new(ApiService::new(
         Arc::clone(&auth_service),
@@ -32,7 +33,7 @@ pub fn run() {
             begin_login,
             confirm_login,
             is_authenticated,
-            get_change_logs
+            //get_latest_changelogs
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
