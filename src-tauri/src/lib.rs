@@ -1,5 +1,6 @@
 mod auth;
 mod api;
+mod db;
 
 use std::sync::Arc;
 use crate::auth::service::{AuthConfig, AuthService};
