@@ -8,9 +8,12 @@ use crate::auth::service::{AuthConfig, AuthService};
 use crate::api::service::{ApiService};
 //use crate::api::commands::{get_latest_changelogs};
 use crate::auth::commands::{begin_login, confirm_login, is_authenticated};
+use crate::sync::commands::run_sync;
+use crate::db::service::DBService;
+use crate::sync::service::SyncService;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+pub async fn run() {
     let auth_service = Arc::new(AuthService::new(
         AuthConfig {
         client_id: "frontend-client".to_string(),
@@ -24,15 +27,26 @@ pub fn run() {
         "http://localhost:8000/api".to_string()
     ));
 
+    let db_service = Arc::new(DBService::new().await);
+    db_service.create_changelogs_if_not_exists().await.expect("Failed to create changelogs table");
+
+    let sync_service = Arc::new(SyncService::new(
+        Arc::clone(&api_service),
+        Arc::clone(&db_service),
+    ));
+
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(auth_service)
         .manage(api_service)
+        .manage(db_service)
+        .manage(sync_service)
         .invoke_handler(tauri::generate_handler![
             begin_login,
             confirm_login,
             is_authenticated,
+            run_sync
             //get_latest_changelogs
         ])
         .run(tauri::generate_context!())

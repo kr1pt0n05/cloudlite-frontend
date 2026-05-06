@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { invoke } from "@tauri-apps/api/core";
 import { computed, onMounted, ref } from "vue";
 import FilesFooter from "../components/FilesFooter.vue";
 import FilesSelectionBar from "../components/FilesSelectionBar.vue";
@@ -19,6 +20,7 @@ const actionFolderId = ref<string | null>(null);
 const renamingId = ref<string | null>(null);
 const renameValue = ref("");
 const search = ref("");
+const syncing = ref(false);
 
 const selectedFolders = computed(() => folders.value.filter((folder) => selected.value.has(folder.id)));
 const filteredFolders = computed(() => {
@@ -97,11 +99,27 @@ async function createFolder() {
   const folder = await createRootFolder();
   folders.value = [folder, ...folders.value];
 }
+
+async function syncFiles() {
+  if (syncing.value) {
+    console.log("synching value", syncing.value);
+    return;
+  }
+
+  syncing.value = true;
+  try {
+    await invoke<void>("run_sync");
+  } catch (error) {
+    console.error("Failed to sync files", error);
+  } finally {
+    syncing.value = false;
+  }
+}
 </script>
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
-    <FilesToolbar v-model:search="search" @create-folder="createFolder" />
+    <FilesToolbar v-model:search="search" :syncing="syncing" @create-folder="createFolder" @sync="syncFiles" />
 
     <FilesSelectionBar
       :selected-count="selected.size"

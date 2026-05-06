@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqlitePoolOptions;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[derive(sqlx::Type, strum_macros::Display)]
 enum EventType {
     CREATE,
@@ -11,7 +11,7 @@ enum EventType {
     EDIT
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[derive(sqlx::Type, strum_macros::Display)]
 enum EntityType {
     DIRECTORY,
@@ -25,18 +25,20 @@ pub struct Status {
     error: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Changelog {
     id: i64,
     event_type: EventType,
     entity_type: EntityType,
     timestamp: String,
-    file_id: String,
-    folder_id: String,
+    file_id: Option<String>,
+    folder_id: Option<String>,
     user_id: String,
 }
 
 
+#[derive(Clone)]
 pub struct DBService{
     pool: sqlx::SqlitePool,
 }
@@ -47,8 +49,7 @@ impl DBService {
             .max_connections(5)
             .min_connections(1)
             .connect("sqlite:./dev.db")
-            .await
-            .unwrap();
+            .await.expect("Failed to connect to database");
         Self { pool }
     }
 
@@ -70,9 +71,10 @@ impl DBService {
     pub async fn get_latest_changelog_id(&self) -> Result<i64, sqlx::Error> {
         let result = sqlx::query!(
             "SELECT id FROM changelogs ORDER BY id DESC LIMIT 1"
-        ).fetch_one(&self.pool)
+        ).fetch_optional(&self.pool)
         .await?;
-        Ok(result.id)
+        println!("Latest changelog id from db: {:?}", result);
+        Ok(result.map_or(0, |row| row.id))
     }
 
     // ToDo: Might implement batch inserting

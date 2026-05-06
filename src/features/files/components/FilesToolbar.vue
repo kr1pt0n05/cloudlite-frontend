@@ -4,24 +4,21 @@ import {
   faChevronRight,
   faFolderPlus,
   faMagnifyingGlass,
+  faRotate,
   faUpload,
 } from "@fortawesome/free-solid-svg-icons";
-import {invoke} from "@tauri-apps/api/core";
 
-defineProps<{
+const props = defineProps<{
   search: string;
+  syncing?: boolean;
 }>();
 
 const emit = defineEmits<{
   "update:search": [value: string];
   createFolder: [];
+  sync: [];
   upload: [];
 }>();
-
-function trigger() {
-  invoke<void>("get_change_logs");
-}
-
 </script>
 
 <template>
@@ -46,6 +43,15 @@ function trigger() {
 
       <div class="flex shrink-0 items-center gap-2">
         <button
+          class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-[12px] font-medium hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+          type="button"
+          :disabled="props.syncing"
+          @click="emit('sync')"
+        >
+          <FontAwesomeIcon class="h-3.5 w-3.5" :class="{ 'animate-spin': props.syncing }" :icon="faRotate" />
+          {{ props.syncing ? "Syncing" : "Sync" }}
+        </button>
+        <button
           class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-[12px] font-medium hover:bg-surface-hover"
           type="button"
           @click="emit('createFolder')"
@@ -56,7 +62,7 @@ function trigger() {
         <button
           class="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
           type="button"
-          @click="trigger"
+          @click="emit('upload')"
         >
           <FontAwesomeIcon class="h-3.5 w-3.5" :icon="faUpload" />
           Upload

@@ -1,2 +1,2 @@
-mod service;
-mod commands;
+pub mod service;
+pub mod commands;

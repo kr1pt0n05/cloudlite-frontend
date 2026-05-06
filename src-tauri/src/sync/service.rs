@@ -1,14 +1,15 @@
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use crate::api::service::ApiService;
 use crate::db::service::{Changelog, DBService, Status};
 
 pub struct SyncService {
-    api: ApiService,
-    db: DBService
+    api: Arc<ApiService>,
+    db: Arc<DBService>
 }
 
 impl SyncService {
-    pub fn new(api: ApiService, db: DBService) -> SyncService {
+    pub fn new(api: Arc<ApiService>, db: Arc<DBService>) -> SyncService {
         Self { api, db }
     }
 

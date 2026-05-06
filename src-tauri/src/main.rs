@@ -3,5 +3,5 @@
 
 #[tokio::main]
 async fn main() {
-    cloudlite_frontend_lib::run()
+    cloudlite_frontend_lib::run().await;
 }
