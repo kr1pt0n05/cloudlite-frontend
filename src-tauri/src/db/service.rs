@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqlitePoolOptions;
 
 #[derive(Deserialize)]
@@ -18,6 +18,7 @@ enum EntityType {
     FILE
 }
 
+#[derive(Clone, Serialize, Debug)]
 pub struct Status {
     id: i64,
     success: bool,
