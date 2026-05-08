@@ -9,4 +9,5 @@ pub enum AuthError {
     CodeExchangeFailed,
     MissingCsrfToken,
     InvalidCSRFToken,
+    APIRequestError(String),
 }

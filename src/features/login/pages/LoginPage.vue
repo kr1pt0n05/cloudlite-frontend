@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref } from "vue";
-import logo from "../assets/cloudlite-logo.png";
-import PopUpWindow from "./PopUpWindow.vue";
+import logo from "../../../assets/cloudlite-logo.png";
+import PopUpWindow from "../../../shared/components/popup/PopUpWindow.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faArrowUpRightFromSquare,
@@ -11,30 +11,19 @@ import {
   faShieldHalved,
   faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
-import {invoke} from "@tauri-apps/api/core";
+import { useRouter } from "vue-router";
+import { beginLogin, confirmLogin } from "../services/authService";
+
+const router = useRouter();
 
 const serverUrl = ref("");
-const submittedUrl = ref("");
 const urlError = ref("");
 const authorizationPopupOpen = ref(false);
 const authorizationWaiting = ref(false);
 const authorizationCountdown = ref(import.meta.env.VITE_AUTHORIZATION_REDIRECT_TIMEOUT_SECONDS);
 let authorizationTimer: number | undefined;
 
-const redirectUrl = ref();
-
-const secs = import.meta.env.VITE_AUTHORIZATION_REDIRECT_TIMEOUT_SECONDS;
-
-
-function invokeGetRedirectUrl(): void {
-  invoke("begin_login").then(url => {
-    console.log(url);
-    redirectUrl.value = url;
-  }).catch(error => {
-    console.log(error);
-  })
-}
-
+const redirectUrl = ref("");
 
 function stopAuthorizationTimer() {
   if (authorizationTimer) {
@@ -49,13 +38,9 @@ function resetAuthorizationState() {
   authorizationCountdown.value = import.meta.env.VITE_AUTHORIZATION_REDIRECT_TIMEOUT_SECONDS;
 }
 
-function submitServer() {
-  console.log("Hello World!");
-  console.log(secs);
-
+async function submitServer() {
   const value = serverUrl.value.trim();
 
-  submittedUrl.value = "";
   urlError.value = "";
   resetAuthorizationState();
 
@@ -67,9 +52,10 @@ function submitServer() {
   try {
     new URL(value);
 
-    submittedUrl.value = value;
+    redirectUrl.value = await beginLogin();
     authorizationPopupOpen.value = true;
-  } catch {
+  } catch (error) {
+    console.log(error);
     urlError.value = "Enter a valid server URL.";
   }
 }
@@ -91,11 +77,13 @@ function openAuthorizationUrl() {
   invokeRedirectAuth();
 }
 
-function invokeRedirectAuth() {
-  invoke("confirm_login")
-  .catch(error => {
+async function invokeRedirectAuth() {
+  try {
+    await confirmLogin();
+    router.push("/files");
+  } catch (error) {
     console.log(error);
-  })
+  }
 }
 
 onBeforeUnmount(() => {
@@ -176,7 +164,6 @@ onBeforeUnmount(() => {
         <button
           class="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-[13px] font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring/25"
           type="submit"
-          @click="invokeGetRedirectUrl()"
         >
           Continue
           <FontAwesomeIcon class="pl-2" :icon="faChevronRight"/>
