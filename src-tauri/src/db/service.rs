@@ -1,22 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqlitePoolOptions;
-
-#[derive(Deserialize, Debug)]
-#[derive(sqlx::Type, strum_macros::Display)]
-enum EventType {
-    CREATE,
-    RENAME,
-    MOVE,
-    DELETE,
-    EDIT
-}
-
-#[derive(Deserialize, Debug)]
-#[derive(sqlx::Type, strum_macros::Display)]
-enum EntityType {
-    DIRECTORY,
-    FILE
-}
+pub(crate) use crate::db::models::changelog::Changelog;
 
 #[derive(Clone, Serialize, Debug)]
 pub struct Status {
@@ -24,19 +8,6 @@ pub struct Status {
     success: bool,
     error: Option<String>,
 }
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Changelog {
-    id: i64,
-    event_type: EventType,
-    entity_type: EntityType,
-    timestamp: String,
-    file_id: Option<String>,
-    folder_id: Option<String>,
-    user_id: String,
-}
-
 
 #[derive(Clone)]
 pub struct DBService{
