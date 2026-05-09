@@ -46,12 +46,13 @@ pub async fn run() {
         .manage(auth_service)
         .manage(api_service)
         .manage(db_service)
+        .manage(fs_service)
         .manage(sync_service)
         .invoke_handler(tauri::generate_handler![
             begin_login,
             confirm_login,
             is_authenticated,
-            run_sync
+            run_sync,
             //get_latest_changelogs
         ])
         .run(tauri::generate_context!())

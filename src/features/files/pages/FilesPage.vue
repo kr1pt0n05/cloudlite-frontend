@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { invoke } from "@tauri-apps/api/core";
-import { computed, onMounted, ref } from "vue";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
+import type { UnlistenFn } from "@tauri-apps/api/event";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import FilesFooter from "../components/FilesFooter.vue";
 import FilesSelectionBar from "../components/FilesSelectionBar.vue";
 import FilesToolbar from "../components/FilesToolbar.vue";
@@ -21,6 +23,16 @@ const renamingId = ref<string | null>(null);
 const renameValue = ref("");
 const search = ref("");
 const syncing = ref(false);
+const dropZone = ref<HTMLElement | null>(null);
+const draggingOverDropZone = ref(false);
+let unlistenDragDrop: UnlistenFn | null = null;
+
+type DroppedFsEntry = {
+  path: string;
+  relativePath: string;
+  isDirectory: boolean;
+  size?: number;
+};
 
 const selectedFolders = computed(() => folders.value.filter((folder) => selected.value.has(folder.id)));
 const filteredFolders = computed(() => {
@@ -34,6 +46,30 @@ const filteredFolders = computed(() => {
 
 onMounted(async () => {
   folders.value = await fetchRootFolders();
+  unlistenDragDrop = await getCurrentWebview().onDragDropEvent(({ payload }) => {
+    if (payload.type === "leave") {
+      draggingOverDropZone.value = false;
+      return;
+    }
+
+    if (payload.type === "enter" || payload.type === "over") {
+      draggingOverDropZone.value = isInsideDropZone(payload.position.x, payload.position.y);
+      return;
+    }
+
+    if (payload.type === "drop") {
+      const shouldHandleDrop = draggingOverDropZone.value || isInsideDropZone(payload.position.x, payload.position.y);
+      draggingOverDropZone.value = false;
+
+      if (shouldHandleDrop) {
+        handleDroppedPaths(payload.paths);
+      }
+    }
+  });
+});
+
+onBeforeUnmount(() => {
+  unlistenDragDrop?.();
 });
 
 function replaceSelected(next: Set<string>) {
@@ -115,6 +151,34 @@ async function syncFiles() {
     syncing.value = false;
   }
 }
+
+function isInsideDropZone(x: number, y: number) {
+  const zone = dropZone.value;
+  if (!zone) {
+    return false;
+  }
+
+  const rect = zone.getBoundingClientRect();
+  const scale = window.devicePixelRatio || 1;
+  const cssX = x / scale;
+  const cssY = y / scale;
+
+  return cssX >= rect.left && cssX <= rect.right && cssY >= rect.top && cssY <= rect.bottom;
+}
+
+async function handleDroppedPaths(paths: string[]) {
+  if (paths.length === 0) {
+    return;
+  }
+  console.log(paths);
+/*
+  try {
+    const entries = await invoke<DroppedFsEntry[]>("receive_dropped_paths", { paths });
+    console.log("Dropped filesystem entries", entries);
+  } catch (error) {
+    console.error("Failed to process dropped files", error);
+  }*/
+}
 </script>
 
 <template>
@@ -127,18 +191,24 @@ async function syncFiles() {
       @delete-selected="deleteSelected"
     />
 
-    <FoldersTable
-      v-model:action-folder-id="actionFolderId"
-      v-model:renaming-id="renamingId"
-      v-model:rename-value="renameValue"
-      :folders="filteredFolders"
-      :selected="selected"
-      @begin-rename="beginRename"
-      @delete-folder="deleteFolder"
-      @save-rename="saveRename"
-      @toggle-all="toggleAll"
-      @toggle-folder="toggleFolder"
-    />
+    <div
+      ref="dropZone"
+      class="relative flex min-h-0 flex-1 flex-col overflow-hidden border-2 border-transparent transition-colors"
+      :class="draggingOverDropZone ? 'border-primary bg-primary-soft/50' : ''"
+    >
+      <FoldersTable
+        v-model:action-folder-id="actionFolderId"
+        v-model:renaming-id="renamingId"
+        v-model:rename-value="renameValue"
+        :folders="filteredFolders"
+        :selected="selected"
+        @begin-rename="beginRename"
+        @delete-folder="deleteFolder"
+        @save-rename="saveRename"
+        @toggle-all="toggleAll"
+        @toggle-folder="toggleFolder"
+      />
+    </div>
 
     <FilesFooter :folders-count="folders.length" :selected-count="selectedFolders.length" />
   </div>
