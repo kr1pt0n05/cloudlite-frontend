@@ -38,6 +38,7 @@ impl SyncService {
             let changelog: Status = self.db.save_changelog(changelog).await.expect("Failed to save changelog");
             println!("Notfying frontend... {:?}", changelog);
             // Notify frontend
+            //ToDo: Notify frontend when error is to stop sync-animation and dialog to show error
             app.emit("synch-changelogs", changelog).expect("Failed to emit changelog");
         }
 

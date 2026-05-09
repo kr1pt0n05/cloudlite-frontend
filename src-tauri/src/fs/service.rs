@@ -10,13 +10,13 @@ impl FilesystemService {
         Self { base_path: "some_path".to_owned() }
     }
 
-    pub fn create_directory(path: String) -> Result<(), String> {
-        fs::create_dir("some_path")
+    pub fn create_directory(&self, path: String) -> Result<(), String> {
+        fs::create_dir(path)
             .map_err(|e| format!("Failed to create directory: {}", e))?;
         Ok(())
     }
 
-    pub fn create_directories() -> Result<(), String> {
+    pub fn create_directories(&self) -> Result<(), String> {
         fs::create_dir_all("some_path")
         .map_err(|e| format!("Failed to create directories: {}", e))?;
         Ok(())
