@@ -2,15 +2,17 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use crate::api::service::ApiService;
 use crate::db::service::{Changelog, DBService, Status};
+use crate::fs::service::FilesystemService;
 
 pub struct SyncService {
     api: Arc<ApiService>,
-    db: Arc<DBService>
+    db: Arc<DBService>,
+    fs: Arc<FilesystemService>,
 }
 
 impl SyncService {
-    pub fn new(api: Arc<ApiService>, db: Arc<DBService>) -> SyncService {
-        Self { api, db }
+    pub fn new(api: Arc<ApiService>, db: Arc<DBService>, fs: Arc<FilesystemService>) -> SyncService {
+        Self { api, db, fs }
     }
 
 
@@ -39,6 +41,13 @@ impl SyncService {
             app.emit("synch-changelogs", changelog).expect("Failed to emit changelog");
         }
 
+
+    }
+
+    /* ============================
+        Helpers
+    ============================ */
+    fn sync_directory(&self, app: AppHandle,) {
 
     }
 

@@ -2,6 +2,7 @@ mod auth;
 mod api;
 mod db;
 mod sync;
+mod fs;
 
 use std::sync::Arc;
 use crate::auth::service::{AuthConfig, AuthService};
@@ -10,6 +11,7 @@ use crate::api::service::{ApiService};
 use crate::auth::commands::{begin_login, confirm_login, is_authenticated};
 use crate::sync::commands::run_sync;
 use crate::db::service::DBService;
+use crate::fs::service::FilesystemService;
 use crate::sync::service::SyncService;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -30,9 +32,12 @@ pub async fn run() {
     let db_service = Arc::new(DBService::new().await);
     db_service.create_changelogs_if_not_exists().await.expect("Failed to create changelogs table");
 
+    let fs_service = Arc::new(FilesystemService::new());
+
     let sync_service = Arc::new(SyncService::new(
         Arc::clone(&api_service),
         Arc::clone(&db_service),
+        Arc::clone(&fs_service)
     ));
 
 
