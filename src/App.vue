@@ -11,7 +11,7 @@ const showShell = computed(() => route.name !== "login");
 onMounted(() => {
   fetchIsAuthenticated()
       .then(isAuth => {
-        if (isAuth) {
+        if (!isAuth) {
           router.push({ name: 'files' })
         }
     })
