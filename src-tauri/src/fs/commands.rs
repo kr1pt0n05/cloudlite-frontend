@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use crate::fs::service::{DroppedFsEntry, FilesystemService};
+use crate::fs::service::{FilesystemService};
 
 #[tauri::command]
-pub fn receive_dropped_paths(
+pub async fn receive_dropped_paths(
     paths: Vec<String>,
     state: tauri::State<'_, Arc<FilesystemService>>,
-) -> Result<Vec<DroppedFsEntry>, String> {
-    state.collect_dropped_entries(paths)
+) -> Result<(), String> {
+    state.write_dropped_paths(paths, None).await
 }

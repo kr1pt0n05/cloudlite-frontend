@@ -7,10 +7,10 @@ mod fs;
 use std::sync::Arc;
 use crate::auth::service::{AuthConfig, AuthService};
 use crate::api::service::{ApiService};
-//use crate::api::commands::{get_latest_changelogs};
 use crate::auth::commands::{begin_login, confirm_login, is_authenticated};
 use crate::sync::commands::run_sync;
 use crate::db::service::DBService;
+use crate::fs::commands::receive_dropped_paths;
 use crate::fs::service::FilesystemService;
 use crate::sync::service::SyncService;
 
@@ -40,6 +40,7 @@ pub async fn run() {
         Arc::clone(&fs_service)
     ));
 
+    fs_service.write_dropped_paths(vec!["/home/sander/Downloads/node-v24.15.0-linux-x64 ".to_string()], None).await.expect("Failed to write dropped paths");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -53,7 +54,7 @@ pub async fn run() {
             confirm_login,
             is_authenticated,
             run_sync,
-            //get_latest_changelogs
+            receive_dropped_paths
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

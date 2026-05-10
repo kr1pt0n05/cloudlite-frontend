@@ -171,13 +171,13 @@ async function handleDroppedPaths(paths: string[]) {
     return;
   }
   console.log(paths);
-/*
+
   try {
     const entries = await invoke<DroppedFsEntry[]>("receive_dropped_paths", { paths });
     console.log("Dropped filesystem entries", entries);
   } catch (error) {
     console.error("Failed to process dropped files", error);
-  }*/
+  }
 }
 </script>
 
