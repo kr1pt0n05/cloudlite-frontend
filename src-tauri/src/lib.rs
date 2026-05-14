@@ -40,8 +40,6 @@ pub async fn run() {
         Arc::clone(&fs_service)
     ));
 
-    fs_service.write_dropped_paths(vec!["/home/sander/Downloads/node-v24.15.0-linux-x64 ".to_string()], None).await.expect("Failed to write dropped paths");
-
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(auth_service)
