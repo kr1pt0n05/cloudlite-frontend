@@ -4,11 +4,10 @@ import {
   faCheckCircle,
   faDownload,
   faEllipsis,
+  faFile,
   faFolder,
   faPen,
   faRotate,
-  faShareNodes,
-  faStar,
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import type { RootFolder } from "../services/filesService";
@@ -27,6 +26,7 @@ const emit = defineEmits<{
   beginRename: [folder: RootFolder];
   saveRename: [];
   deleteFolder: [id: string];
+  openFolder: [folder: RootFolder];
   "update:actionFolderId": [id: string | null];
   "update:renamingId": [id: string | null];
   "update:renameValue": [value: string];
@@ -52,7 +52,6 @@ function toggleActions(id: string) {
             />
           </th>
           <th class="border-b border-border px-3 py-2 text-left font-semibold">Name</th>
-          <th class="hidden w-[150px] border-b border-border px-3 py-2 text-left font-semibold md:table-cell">Owner</th>
           <th class="w-[120px] border-b border-border px-3 py-2 text-right font-semibold">Items</th>
           <th class="hidden w-[110px] border-b border-border px-3 py-2 text-right font-semibold lg:table-cell">Size</th>
           <th class="hidden w-[150px] border-b border-border px-3 py-2 text-left font-semibold lg:table-cell">Modified</th>
@@ -67,6 +66,7 @@ function toggleActions(id: string) {
           class="group cursor-default"
           :class="selected.has(folder.id) ? 'bg-primary-soft/60' : 'hover:bg-surface-hover'"
           @click="emit('toggleFolder', folder.id)"
+          @dblclick="emit('openFolder', folder)"
         >
           <td class="border-b border-border/60 px-3 py-2">
             <input
@@ -80,7 +80,7 @@ function toggleActions(id: string) {
           </td>
           <td class="border-b border-border/60 px-3 py-2">
             <div class="flex min-w-0 items-center gap-2.5">
-              <FontAwesomeIcon class="h-4 w-4 shrink-0 text-primary" :icon="faFolder" />
+              <FontAwesomeIcon class="h-4 w-4 shrink-0 text-primary" :icon="folder.isDirectory ? faFolder : faFile" />
               <input
                 v-if="renamingId === folder.id"
                 :value="renameValue"
@@ -92,11 +92,8 @@ function toggleActions(id: string) {
                 @blur="emit('saveRename')"
               />
               <span v-else class="truncate font-medium text-foreground">{{ folder.name }}</span>
-              <FontAwesomeIcon v-if="folder.starred" class="h-3.5 w-3.5 text-warning" :icon="faStar" />
-              <FontAwesomeIcon v-if="folder.shared" class="h-3.5 w-3.5 text-muted-foreground" :icon="faShareNodes" />
             </div>
           </td>
-          <td class="hidden border-b border-border/60 px-3 py-2 text-muted-foreground md:table-cell">{{ folder.owner }}</td>
           <td class="border-b border-border/60 px-3 py-2 text-right tabular-nums text-muted-foreground">
             {{ folder.folders }} · {{ folder.files }}
           </td>

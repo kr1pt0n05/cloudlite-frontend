@@ -1,22 +1,24 @@
 <script setup lang="ts">
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { UnlistenFn } from "@tauri-apps/api/event";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import FilesFooter from "../components/FilesFooter.vue";
 import FilesSelectionBar from "../components/FilesSelectionBar.vue";
 import FilesToolbar from "../components/FilesToolbar.vue";
 import FoldersTable from "../components/FoldersTable.vue";
 import {
-  createRootFolder,
-  deleteRootFolder,
-  deleteRootFolders,
+  createFilesystemEntry,
   fetchRootFolders,
-  renameRootFolder,
+  getParentDirectory,
+  normalizeEntryPath,
+  upsertEntry,
+  type DirectoryPath,
   type RootFolder,
 } from "../services/filesService";
 
 const folders = ref<RootFolder[]>([]);
+const currentDirectory = ref<DirectoryPath>(null);
 const selected = ref<Set<string>>(new Set());
 const actionFolderId = ref<string | null>(null);
 const renamingId = ref<string | null>(null);
@@ -25,13 +27,13 @@ const search = ref("");
 const syncing = ref(false);
 const dropZone = ref<HTMLElement | null>(null);
 const draggingOverDropZone = ref(false);
+const directoryCache = new Map<string, RootFolder[]>();
 let unlistenDragDrop: UnlistenFn | null = null;
+let unlistenEntryCreated: UnlistenFn | null = null;
 
-type DroppedFsEntry = {
+type FilesystemEntryCreated = {
   path: string;
-  relativePath: string;
   isDirectory: boolean;
-  size?: number;
 };
 
 const selectedFolders = computed(() => folders.value.filter((folder) => selected.value.has(folder.id)));
@@ -41,11 +43,16 @@ const filteredFolders = computed(() => {
     return folders.value;
   }
 
-  return folders.value.filter((folder) => folder.name.toLowerCase().includes(query) || folder.owner.toLowerCase().includes(query));
+  return folders.value.filter((folder) => folder.name.toLowerCase().includes(query));
 });
 
 onMounted(async () => {
   folders.value = await fetchRootFolders();
+  directoryCache.set(cacheKey(currentDirectory.value), folders.value);
+  unlistenEntryCreated = await listen<FilesystemEntryCreated>("filesystem-entry-created", ({ payload }) => {
+    handleFilesystemEntryCreated(payload);
+  });
+
   unlistenDragDrop = await getCurrentWebview().onDragDropEvent(({ payload }) => {
     if (payload.type === "leave") {
       draggingOverDropZone.value = false;
@@ -70,6 +77,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   unlistenDragDrop?.();
+  unlistenEntryCreated?.();
 });
 
 function replaceSelected(next: Set<string>) {
@@ -91,13 +99,26 @@ function toggleAll() {
   replaceSelected(new Set(filteredFolders.value.map((folder) => folder.id)));
 }
 
+function cacheKey(directory: DirectoryPath) {
+  return directory ?? "";
+}
+
+function setCurrentDirectory(directory: DirectoryPath) {
+  currentDirectory.value = directory;
+  folders.value = directoryCache.get(cacheKey(directory)) ?? [];
+  replaceSelected(new Set());
+  actionFolderId.value = null;
+  renamingId.value = null;
+  renameValue.value = "";
+}
+
 function beginRename(folder: RootFolder) {
   actionFolderId.value = null;
   renamingId.value = folder.id;
   renameValue.value = folder.name;
 }
 
-async function saveRename() {
+function saveRename() {
   const id = renamingId.value;
   const name = renameValue.value.trim();
   if (!id || !name) {
@@ -105,18 +126,15 @@ async function saveRename() {
     return;
   }
 
-  const renamedFolder = await renameRootFolder(id, name);
-  if (renamedFolder) {
-    folders.value = folders.value.map((folder) => (folder.id === id ? renamedFolder : folder));
-  }
-
+  folders.value = folders.value.map((folder) => (folder.id === id ? { ...folder, name, modified: "Just now" } : folder));
+  directoryCache.set(cacheKey(currentDirectory.value), folders.value);
   renamingId.value = null;
   renameValue.value = "";
 }
 
-async function deleteFolder(id: string) {
-  await deleteRootFolder(id);
+function deleteFolder(id: string) {
   folders.value = folders.value.filter((folder) => folder.id !== id);
+  directoryCache.set(cacheKey(currentDirectory.value), folders.value);
 
   const next = new Set(selected.value);
   next.delete(id);
@@ -124,21 +142,33 @@ async function deleteFolder(id: string) {
   actionFolderId.value = null;
 }
 
-async function deleteSelected() {
+function deleteSelected() {
   const ids = new Set(selected.value);
-  await deleteRootFolders(ids);
   folders.value = folders.value.filter((folder) => !ids.has(folder.id));
+  directoryCache.set(cacheKey(currentDirectory.value), folders.value);
   replaceSelected(new Set());
 }
 
-async function createFolder() {
-  const folder = await createRootFolder();
-  folders.value = [folder, ...folders.value];
+function openFolder(folder: RootFolder) {
+  if (folder.isDirectory) {
+    setCurrentDirectory(folder.path);
+  }
+}
+
+function navigateRoot() {
+  setCurrentDirectory(null);
+}
+
+function navigateParent() {
+  if (currentDirectory.value === null) {
+    return;
+  }
+
+  setCurrentDirectory(getParentDirectory(currentDirectory.value));
 }
 
 async function syncFiles() {
   if (syncing.value) {
-    console.log("synching value", syncing.value);
     return;
   }
 
@@ -170,20 +200,35 @@ async function handleDroppedPaths(paths: string[]) {
   if (paths.length === 0) {
     return;
   }
-  console.log(paths);
 
   try {
-    const entries = await invoke<DroppedFsEntry[]>("receive_dropped_paths", { paths });
-    console.log("Dropped filesystem entries", entries);
+    await invoke<void>("receive_dropped_paths", { paths, destinationPath: currentDirectory.value });
   } catch (error) {
     console.error("Failed to process dropped files", error);
   }
+}
+
+function handleFilesystemEntryCreated(payload: FilesystemEntryCreated) {
+  const path = normalizeEntryPath(payload.path);
+  if (!path || getParentDirectory(path) !== currentDirectory.value) {
+    return;
+  }
+
+  folders.value = upsertEntry(folders.value, createFilesystemEntry(path, payload.isDirectory));
+  directoryCache.set(cacheKey(currentDirectory.value), folders.value);
 }
 </script>
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
-    <FilesToolbar v-model:search="search" :syncing="syncing" @create-folder="createFolder" @sync="syncFiles" />
+    <FilesToolbar
+      v-model:search="search"
+      :current-directory="currentDirectory"
+      :syncing="syncing"
+      @navigate-parent="navigateParent"
+      @navigate-root="navigateRoot"
+      @sync="syncFiles"
+    />
 
     <FilesSelectionBar
       :selected-count="selected.size"
@@ -204,6 +249,7 @@ async function handleDroppedPaths(paths: string[]) {
         :selected="selected"
         @begin-rename="beginRename"
         @delete-folder="deleteFolder"
+        @open-folder="openFolder"
         @save-rename="saveRename"
         @toggle-all="toggleAll"
         @toggle-folder="toggleFolder"
