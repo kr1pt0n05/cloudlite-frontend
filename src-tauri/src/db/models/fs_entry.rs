@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Serialize, Deserialize)]
 pub enum SyncState {
     Pending,
@@ -10,10 +9,11 @@ pub enum SyncState {
 }
 
 #[derive(Serialize, Deserialize)]
-enum FsEntryKind {
+pub enum FsEntryKind {
     File,
     Directory,
 }
+
 #[derive(Serialize, Deserialize)]
 pub struct FsEntry {
     pub id: Option<String>,
