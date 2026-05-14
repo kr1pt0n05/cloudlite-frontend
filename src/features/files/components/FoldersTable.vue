@@ -63,10 +63,9 @@ function toggleActions(id: string) {
         <tr
           v-for="folder in folders"
           :key="folder.id"
-          class="group cursor-default"
+          class="group"
           :class="selected.has(folder.id) ? 'bg-primary-soft/60' : 'hover:bg-surface-hover'"
-          @click="emit('toggleFolder', folder.id)"
-          @dblclick="emit('openFolder', folder)"
+          @click="emit('openFolder', folder)"
         >
           <td class="border-b border-border/60 px-3 py-2">
             <input
