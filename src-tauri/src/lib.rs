@@ -31,6 +31,8 @@ pub async fn run() {
 
     let db_service = Arc::new(DBService::new().await);
     db_service.create_changelogs_if_not_exists().await.expect("Failed to create changelogs table");
+    db_service.create_local_fs_directory_if_not_exists().await.expect("Failed to create local_fs_directories table");
+    db_service.create_local_fs_file_if_not_exists().await.expect("Failed to create local_fs_files table");
 
     let fs_service = Arc::new(FilesystemService::new());
 
