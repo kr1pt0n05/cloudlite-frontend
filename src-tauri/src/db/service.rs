@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqlitePoolOptions;
+use crate::db::local::models::local_fs_directory::LocalFsDirectory;
+use crate::db::local::models::local_fs_file::LocalFsFile;
 pub(crate) use crate::db::models::changelog::Changelog;
 
 #[derive(Clone, Serialize, Debug)]
@@ -23,7 +25,6 @@ impl DBService {
             .await.expect("Failed to connect to database");
         Self { pool }
     }
-
 
 
     pub async fn create_changelogs_if_not_exists(&self) -> Result<(), sqlx::Error> {

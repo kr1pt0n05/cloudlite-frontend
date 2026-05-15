@@ -19,7 +19,7 @@ impl DBService {
 
     pub async fn get_subdirectories(
         &self,
-        parent_id: Option<&str>,
+        parent_id: &Option<String>,
     ) -> sqlx::Result<Vec<LocalFsDirectory>> {
         sqlx::query_as!(
         LocalFsDirectory,

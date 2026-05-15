@@ -15,7 +15,6 @@ impl SyncService {
         Self { api, db, fs }
     }
 
-
     pub async fn run_sync(&self, app: AppHandle) {
         self.sync_changelogs(app).await;
     }

@@ -1,4 +1,4 @@
 pub mod service;
 pub mod models;
-mod local;
+pub(crate) mod local;
 mod remote;

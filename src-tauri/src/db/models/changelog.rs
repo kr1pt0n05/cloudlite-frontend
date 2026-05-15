@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use crate::db::service::DBService;
 
 #[derive(Deserialize, Debug)]
 #[derive(sqlx::Type, strum_macros::Display)]

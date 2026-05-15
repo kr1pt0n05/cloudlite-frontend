@@ -22,7 +22,7 @@ impl DBService {
 
     pub async fn get_files_of_directory(
         &self,
-        directory_id: Option<&str>,
+        directory_id: &Option<String>,
     ) -> sqlx::Result<Vec<LocalFsFile>> {
         sqlx::query_as!(
         LocalFsFile,
