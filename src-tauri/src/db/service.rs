@@ -11,7 +11,7 @@ pub struct Status {
 
 #[derive(Clone)]
 pub struct DBService{
-    pool: sqlx::SqlitePool,
+    pub(crate) pool: sqlx::SqlitePool,
 }
 
 impl DBService {
@@ -23,6 +23,8 @@ impl DBService {
             .await.expect("Failed to connect to database");
         Self { pool }
     }
+
+
 
     pub async fn create_changelogs_if_not_exists(&self) -> Result<(), sqlx::Error> {
         sqlx::query(
