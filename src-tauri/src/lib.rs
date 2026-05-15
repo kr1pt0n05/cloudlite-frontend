@@ -3,6 +3,7 @@ mod api;
 mod db;
 mod sync;
 mod fs;
+mod explorer;
 
 use std::sync::Arc;
 use crate::auth::service::{AuthConfig, AuthService};
@@ -35,6 +36,11 @@ pub async fn run() {
     db_service.create_local_fs_file_if_not_exists().await.expect("Failed to create local_fs_files table");
 
     let fs_service = Arc::new(FilesystemService::new());
+
+    let explorer_service = Arc::new(explorer::service::ExplorerService::new(
+        Arc::clone(&db_service),
+        Arc::clone(&fs_service),
+    ));
 
     let sync_service = Arc::new(SyncService::new(
         Arc::clone(&api_service),
