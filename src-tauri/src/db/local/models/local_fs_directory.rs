@@ -1,7 +1,6 @@
-use std::path::PathBuf;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct LocalFsDirectory {
     pub id: String,

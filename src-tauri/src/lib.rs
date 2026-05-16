@@ -14,6 +14,7 @@ use crate::db::service::DBService;
 use crate::fs::commands::receive_dropped_paths;
 use crate::fs::service::FilesystemService;
 use crate::sync::service::SyncService;
+use crate::explorer::commands::get_directory_entries;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub async fn run() {
@@ -54,13 +55,15 @@ pub async fn run() {
         .manage(api_service)
         .manage(db_service)
         .manage(fs_service)
+        .manage(explorer_service)
         .manage(sync_service)
         .invoke_handler(tauri::generate_handler![
             begin_login,
             confirm_login,
             is_authenticated,
             run_sync,
-            receive_dropped_paths
+            receive_dropped_paths,
+            get_directory_entries
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

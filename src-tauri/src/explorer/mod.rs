@@ -1,2 +1,2 @@
 pub(crate) mod service;
-mod commands;
+pub(crate) mod commands;

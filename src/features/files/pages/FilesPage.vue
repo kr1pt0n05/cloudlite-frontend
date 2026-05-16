@@ -9,6 +9,7 @@ import FilesToolbar from "../components/FilesToolbar.vue";
 import FoldersTable from "../components/FoldersTable.vue";
 import {
   createFilesystemEntry,
+  fetchDirectoryEntries,
   fetchRootFolders,
   getParentDirectory,
   normalizeEntryPath,
@@ -25,11 +26,19 @@ const renamingId = ref<string | null>(null);
 const renameValue = ref("");
 const search = ref("");
 const syncing = ref(false);
+const loadingDirectory = ref(false);
 const dropZone = ref<HTMLElement | null>(null);
 const draggingOverDropZone = ref(false);
 const directoryCache = new Map<string, RootFolder[]>();
+const directoryIdByPath = new Map<string, string>();
+const navigationStack = ref<DirectoryLocation[]>([{ path: null, directoryId: null }]);
 let unlistenDragDrop: UnlistenFn | null = null;
 let unlistenEntryCreated: UnlistenFn | null = null;
+
+type DirectoryLocation = {
+  path: DirectoryPath;
+  directoryId: string | null;
+};
 
 type FilesystemEntryCreated = {
   path: string;
@@ -48,7 +57,8 @@ const filteredFolders = computed(() => {
 
 onMounted(async () => {
   folders.value = await fetchRootFolders();
-  directoryCache.set(cacheKey(currentDirectory.value), folders.value);
+  rememberDirectoryIds(folders.value);
+  directoryCache.set(cacheKey(navigationStack.value[0]), folders.value);
   unlistenEntryCreated = await listen<FilesystemEntryCreated>("filesystem-entry-created", ({ payload }) => {
     handleFilesystemEntryCreated(payload);
   });
@@ -99,13 +109,17 @@ function toggleAll() {
   replaceSelected(new Set(filteredFolders.value.map((folder) => folder.id)));
 }
 
-function cacheKey(directory: DirectoryPath) {
-  return directory ?? "";
+function cacheKey(location: DirectoryLocation) {
+  return location.directoryId ?? location.path ?? "";
 }
 
-function setCurrentDirectory(directory: DirectoryPath) {
-  currentDirectory.value = directory;
-  folders.value = directoryCache.get(cacheKey(directory)) ?? [];
+function currentLocation(): DirectoryLocation {
+  return navigationStack.value[navigationStack.value.length - 1] ?? { path: null, directoryId: null };
+}
+
+function setCurrentDirectory(location: DirectoryLocation) {
+  currentDirectory.value = location.path;
+  folders.value = directoryCache.get(cacheKey(location)) ?? [];
   replaceSelected(new Set());
   actionFolderId.value = null;
   renamingId.value = null;
@@ -127,14 +141,14 @@ function saveRename() {
   }
 
   folders.value = folders.value.map((folder) => (folder.id === id ? { ...folder, name, modified: "Just now" } : folder));
-  directoryCache.set(cacheKey(currentDirectory.value), folders.value);
+  directoryCache.set(cacheKey(currentLocation()), folders.value);
   renamingId.value = null;
   renameValue.value = "";
 }
 
 function deleteFolder(id: string) {
   folders.value = folders.value.filter((folder) => folder.id !== id);
-  directoryCache.set(cacheKey(currentDirectory.value), folders.value);
+  directoryCache.set(cacheKey(currentLocation()), folders.value);
 
   const next = new Set(selected.value);
   next.delete(id);
@@ -145,26 +159,41 @@ function deleteFolder(id: string) {
 function deleteSelected() {
   const ids = new Set(selected.value);
   folders.value = folders.value.filter((folder) => !ids.has(folder.id));
-  directoryCache.set(cacheKey(currentDirectory.value), folders.value);
+  directoryCache.set(cacheKey(currentLocation()), folders.value);
   replaceSelected(new Set());
 }
 
-function openFolder(folder: RootFolder) {
-  if (folder.isDirectory) {
-    setCurrentDirectory(folder.path);
+async function openFolder(folder: RootFolder) {
+  if (!folder.isDirectory || loadingDirectory.value) {
+    return;
+  }
+
+  const parentLocation = currentLocation();
+  const location = {
+    path: folder.path,
+    directoryId: folder.directoryId ?? directoryIdByPath.get(folder.path) ?? null,
+  };
+
+  navigationStack.value = [...navigationStack.value, location];
+  setCurrentDirectory(location);
+
+  if (!directoryCache.has(cacheKey(location))) {
+    await loadDirectory(location, folder, parentLocation);
   }
 }
 
 function navigateRoot() {
-  setCurrentDirectory(null);
+  navigationStack.value = [{ path: null, directoryId: null }];
+  setCurrentDirectory(currentLocation());
 }
 
 function navigateParent() {
-  if (currentDirectory.value === null) {
+  if (navigationStack.value.length <= 1) {
     return;
   }
 
-  setCurrentDirectory(getParentDirectory(currentDirectory.value));
+  navigationStack.value = navigationStack.value.slice(0, -1);
+  setCurrentDirectory(currentLocation());
 }
 
 async function syncFiles() {
@@ -215,7 +244,67 @@ function handleFilesystemEntryCreated(payload: FilesystemEntryCreated) {
   }
 
   folders.value = upsertEntry(folders.value, createFilesystemEntry(path, payload.isDirectory));
-  directoryCache.set(cacheKey(currentDirectory.value), folders.value);
+  directoryCache.set(cacheKey(currentLocation()), folders.value);
+}
+
+async function loadDirectory(location: DirectoryLocation, sourceFolder?: RootFolder, parentLocation?: DirectoryLocation) {
+  loadingDirectory.value = true;
+
+  try {
+    const directoryId = location.directoryId ?? (sourceFolder ? await resolveDirectoryId(sourceFolder, parentLocation ?? currentLocation()) : null);
+
+    if (directoryId) {
+      location.directoryId = directoryId;
+      directoryIdByPath.set(location.path ?? "", directoryId);
+      navigationStack.value = navigationStack.value.map((item, index) =>
+        index === navigationStack.value.length - 1 ? { ...item, directoryId } : item,
+      );
+    }
+
+    if (!directoryId && location.path !== null) {
+      directoryCache.set(cacheKey(location), []);
+
+      if (currentDirectory.value === location.path) {
+        folders.value = [];
+      }
+
+      return;
+    }
+
+    const entries = await fetchDirectoryEntries(directoryId, location.path);
+    rememberDirectoryIds(entries);
+    directoryCache.set(cacheKey(location), entries);
+
+    if (currentDirectory.value === location.path) {
+      folders.value = entries;
+    }
+  } catch (error) {
+    console.error("Failed to load directory entries", error);
+  } finally {
+    loadingDirectory.value = false;
+  }
+}
+
+async function resolveDirectoryId(folder: RootFolder, parentLocation: DirectoryLocation) {
+  const entries = await fetchDirectoryEntries(parentLocation.directoryId, parentLocation.path);
+  rememberDirectoryIds(entries);
+  directoryCache.set(cacheKey(parentLocation), entries);
+
+  const hydratedFolder = entries.find((entry) => entry.isDirectory && entry.path === folder.path);
+
+  if (hydratedFolder?.directoryId) {
+    return hydratedFolder.directoryId;
+  }
+
+  return null;
+}
+
+function rememberDirectoryIds(entries: RootFolder[]) {
+  for (const entry of entries) {
+    if (entry.isDirectory && entry.directoryId) {
+      directoryIdByPath.set(entry.path, entry.directoryId);
+    }
+  }
 }
 </script>
 
@@ -246,6 +335,7 @@ function handleFilesystemEntryCreated(payload: FilesystemEntryCreated) {
         v-model:renaming-id="renamingId"
         v-model:rename-value="renameValue"
         :folders="filteredFolders"
+        :hydrating="loadingDirectory && folders.length === 0"
         :selected="selected"
         @begin-rename="beginRename"
         @delete-folder="deleteFolder"

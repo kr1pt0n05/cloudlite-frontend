@@ -3,7 +3,10 @@ use crate::db::local::models::local_fs_directory::LocalFsDirectory;
 use crate::db::local::models::local_fs_file::LocalFsFile;
 use crate::db::service::DBService;
 use crate::fs::service::FilesystemService;
+use serde::Serialize;
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DirectoryEntries {
     pub directories: Vec<LocalFsDirectory>,
     pub files: Vec<LocalFsFile>,

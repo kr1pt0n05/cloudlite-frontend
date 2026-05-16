@@ -14,6 +14,7 @@ import type { RootFolder } from "../services/filesService";
 
 const props = defineProps<{
   folders: RootFolder[];
+  hydrating?: boolean;
   selected: Set<string>;
   actionFolderId: string | null;
   renamingId: string | null;
@@ -60,6 +61,34 @@ function toggleActions(id: string) {
         </tr>
       </thead>
       <tbody>
+        <template v-if="hydrating">
+          <tr v-for="index in 5" :key="`hydrating-${index}`" class="animate-pulse">
+            <td class="border-b border-border/60 px-3 py-2">
+              <div class="h-3.5 w-3.5 rounded bg-muted" />
+            </td>
+            <td class="border-b border-border/60 px-3 py-2">
+              <div class="flex min-w-0 items-center gap-2.5">
+                <div class="h-4 w-4 shrink-0 rounded bg-muted" />
+                <div class="h-3.5 w-[min(220px,60%)] rounded bg-muted" />
+              </div>
+            </td>
+            <td class="border-b border-border/60 px-3 py-2">
+              <div class="ml-auto h-3.5 w-14 rounded bg-muted" />
+            </td>
+            <td class="hidden border-b border-border/60 px-3 py-2 lg:table-cell">
+              <div class="ml-auto h-3.5 w-12 rounded bg-muted" />
+            </td>
+            <td class="hidden border-b border-border/60 px-3 py-2 lg:table-cell">
+              <div class="h-3.5 w-24 rounded bg-muted" />
+            </td>
+            <td class="border-b border-border/60 px-3 py-2">
+              <div class="h-5 w-16 rounded bg-muted" />
+            </td>
+            <td class="border-b border-border/60 px-3 py-2">
+              <div class="ml-auto h-5 w-5 rounded bg-muted" />
+            </td>
+          </tr>
+        </template>
         <tr
           v-for="folder in folders"
           :key="folder.id"
@@ -150,7 +179,7 @@ function toggleActions(id: string) {
       </tbody>
     </table>
 
-    <div v-if="folders.length === 0" class="flex h-48 items-center justify-center text-[13px] text-muted-foreground">
+    <div v-if="folders.length === 0 && !hydrating" class="flex h-48 items-center justify-center text-[13px] text-muted-foreground">
       No folders match your search.
     </div>
   </div>
