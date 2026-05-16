@@ -17,6 +17,19 @@ impl DBService {
         Ok(())
     }
 
+    pub async fn save_local_directory(&self, directory: LocalFsDirectory) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "INSERT INTO local_fs_directories (id, name, path, parent, created_at)
+            VALUES (?1, ?2, ?3, ?4, ?5)",
+            directory.id,
+            directory.name,
+            directory.path,
+            directory.parent,
+            directory.created_at
+        ).execute(&self.pool).await?;
+        Ok(())
+    }
+
     pub async fn get_subdirectories(
         &self,
         parent_id: &Option<String>,

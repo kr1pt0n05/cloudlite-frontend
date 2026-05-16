@@ -20,6 +20,21 @@ impl DBService {
         Ok(())
     }
 
+    pub async fn save_local_file(&self, file: LocalFsFile) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "INSERT INTO local_fs_files (id, name, directory, checksum, size, mime_type, created_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            file.id,
+            file.name,
+            file.directory,
+            file.checksum,
+            file.size,
+            file.mime_type,
+            file.created_at
+        ).execute(&self.pool).await?;
+        Ok(())
+    }
+
     pub async fn get_files_of_directory(
         &self,
         directory_id: &Option<String>,
