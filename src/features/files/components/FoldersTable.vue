@@ -68,7 +68,10 @@ function toggleActions(id: string) {
             </td>
             <td class="border-b border-border/60 px-3 py-2">
               <div class="flex min-w-0 items-center gap-2.5">
-                <div class="h-4 w-4 shrink-0 rounded bg-muted" />
+                <FontAwesomeIcon
+                  class="h-4 w-4 shrink-0 text-muted"
+                  :icon="index % 3 === 0 ? faFile : faFolder"
+                />
                 <div class="h-3.5 w-[min(220px,60%)] rounded bg-muted" />
               </div>
             </td>
@@ -89,93 +92,95 @@ function toggleActions(id: string) {
             </td>
           </tr>
         </template>
-        <tr
-          v-for="folder in folders"
-          :key="folder.id"
-          class="group"
-          :class="selected.has(folder.id) ? 'bg-primary-soft/60' : 'hover:bg-surface-hover'"
-          @click="emit('openFolder', folder)"
-        >
-          <td class="border-b border-border/60 px-3 py-2">
-            <input
-              class="h-3.5 w-3.5 rounded border-border accent-primary"
-              type="checkbox"
-              :checked="selected.has(folder.id)"
-              :aria-label="`Select ${folder.name}`"
-              @click.stop
-              @change="emit('toggleFolder', folder.id)"
-            />
-          </td>
-          <td class="border-b border-border/60 px-3 py-2">
-            <div class="flex min-w-0 items-center gap-2.5">
-              <FontAwesomeIcon class="h-4 w-4 shrink-0 text-primary" :icon="folder.isDirectory ? faFolder : faFile" />
+        <template v-else>
+          <tr
+            v-for="folder in folders"
+            :key="folder.id"
+            class="group"
+            :class="selected.has(folder.id) ? 'bg-primary-soft/60' : 'hover:bg-surface-hover'"
+            @click="emit('openFolder', folder)"
+          >
+            <td class="border-b border-border/60 px-3 py-2">
               <input
-                v-if="renamingId === folder.id"
-                :value="renameValue"
-                class="h-7 min-w-0 max-w-[360px] flex-1 rounded-md border border-input bg-surface px-2 text-[13px] outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+                class="h-3.5 w-3.5 rounded border-border accent-primary"
+                type="checkbox"
+                :checked="selected.has(folder.id)"
+                :aria-label="`Select ${folder.name}`"
                 @click.stop
-                @input="emit('update:renameValue', ($event.target as HTMLInputElement).value)"
-                @keydown.enter.prevent="emit('saveRename')"
-                @keydown.esc.prevent="emit('update:renamingId', null)"
-                @blur="emit('saveRename')"
+                @change="emit('toggleFolder', folder.id)"
               />
-              <span v-else class="truncate font-medium text-foreground">{{ folder.name }}</span>
-            </div>
-          </td>
-          <td class="border-b border-border/60 px-3 py-2 text-right tabular-nums text-muted-foreground">
-            {{ folder.folders }} · {{ folder.files }}
-          </td>
-          <td class="hidden border-b border-border/60 px-3 py-2 text-right tabular-nums text-muted-foreground lg:table-cell">
-            {{ folder.size }}
-          </td>
-          <td class="hidden border-b border-border/60 px-3 py-2 text-muted-foreground lg:table-cell">{{ folder.modified }}</td>
-          <td class="border-b border-border/60 px-3 py-2">
-            <span
-              class="inline-flex h-5 items-center gap-1 rounded px-1.5 text-[11px] font-medium"
-              :class="{
-                'bg-success-soft text-success': folder.sync === 'synced',
-                'bg-info-soft text-info': folder.sync === 'syncing',
-                'bg-warning-soft text-warning-foreground': folder.sync === 'pending',
-              }"
-            >
-              <FontAwesomeIcon
-                class="h-3 w-3"
-                :class="{ 'animate-spin': folder.sync === 'syncing' }"
-                :icon="folder.sync === 'syncing' ? faRotate : faCheckCircle"
-              />
-              {{ folder.sync === "synced" ? "Synced" : folder.sync === "syncing" ? "Syncing" : "Pending" }}
-            </span>
-          </td>
-          <td class="relative border-b border-border/60 px-3 py-2 text-right">
-            <button
-              class="rounded p-1 text-muted-foreground opacity-100 hover:bg-surface-hover hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"
-              type="button"
-              :aria-label="`Actions for ${folder.name}`"
-              @click.stop="toggleActions(folder.id)"
-            >
-              <FontAwesomeIcon class="h-4 w-4" :icon="faEllipsis" />
-            </button>
-            <div
-              v-if="actionFolderId === folder.id"
-              class="absolute right-3 top-9 z-20 w-44 overflow-hidden rounded-lg border border-border bg-popover py-1 text-left shadow-pop"
-              @click.stop
-            >
-              <button class="flex w-full items-center gap-2.5 px-3 py-1.5 text-[12px] hover:bg-surface-hover" type="button" @click="emit('beginRename', folder)">
-                <FontAwesomeIcon class="h-3.5 w-3.5 text-muted-foreground" :icon="faPen" />
-                Rename
+            </td>
+            <td class="border-b border-border/60 px-3 py-2">
+              <div class="flex min-w-0 items-center gap-2.5">
+                <FontAwesomeIcon class="h-4 w-4 shrink-0 text-primary" :icon="folder.isDirectory ? faFolder : faFile" />
+                <input
+                  v-if="renamingId === folder.id"
+                  :value="renameValue"
+                  class="h-7 min-w-0 max-w-[360px] flex-1 rounded-md border border-input bg-surface px-2 text-[13px] outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+                  @click.stop
+                  @input="emit('update:renameValue', ($event.target as HTMLInputElement).value)"
+                  @keydown.enter.prevent="emit('saveRename')"
+                  @keydown.esc.prevent="emit('update:renamingId', null)"
+                  @blur="emit('saveRename')"
+                />
+                <span v-else class="truncate font-medium text-foreground">{{ folder.name }}</span>
+              </div>
+            </td>
+            <td class="border-b border-border/60 px-3 py-2 text-right tabular-nums text-muted-foreground">
+              {{ folder.folders }} · {{ folder.files }}
+            </td>
+            <td class="hidden border-b border-border/60 px-3 py-2 text-right tabular-nums text-muted-foreground lg:table-cell">
+              {{ folder.size }}
+            </td>
+            <td class="hidden border-b border-border/60 px-3 py-2 text-muted-foreground lg:table-cell">{{ folder.modified }}</td>
+            <td class="border-b border-border/60 px-3 py-2">
+              <span
+                class="inline-flex h-5 items-center gap-1 rounded px-1.5 text-[11px] font-medium"
+                :class="{
+                  'bg-success-soft text-success': folder.sync === 'synced',
+                  'bg-info-soft text-info': folder.sync === 'syncing',
+                  'bg-warning-soft text-warning-foreground': folder.sync === 'pending',
+                }"
+              >
+                <FontAwesomeIcon
+                  class="h-3 w-3"
+                  :class="{ 'animate-spin': folder.sync === 'syncing' }"
+                  :icon="folder.sync === 'syncing' ? faRotate : faCheckCircle"
+                />
+                {{ folder.sync === "synced" ? "Synced" : folder.sync === "syncing" ? "Syncing" : "Pending" }}
+              </span>
+            </td>
+            <td class="relative border-b border-border/60 px-3 py-2 text-right">
+              <button
+                class="rounded p-1 text-muted-foreground opacity-100 hover:bg-surface-hover hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"
+                type="button"
+                :aria-label="`Actions for ${folder.name}`"
+                @click.stop="toggleActions(folder.id)"
+              >
+                <FontAwesomeIcon class="h-4 w-4" :icon="faEllipsis" />
               </button>
-              <button class="flex w-full items-center gap-2.5 px-3 py-1.5 text-[12px] hover:bg-surface-hover" type="button">
-                <FontAwesomeIcon class="h-3.5 w-3.5 text-muted-foreground" :icon="faDownload" />
-                Download
-              </button>
-              <div class="my-1 h-px bg-border" />
-              <button class="flex w-full items-center gap-2.5 px-3 py-1.5 text-[12px] text-destructive hover:bg-destructive-soft" type="button" @click="emit('deleteFolder', folder.id)">
-                <FontAwesomeIcon class="h-3.5 w-3.5" :icon="faTrash" />
-                Delete
-              </button>
-            </div>
-          </td>
-        </tr>
+              <div
+                v-if="actionFolderId === folder.id"
+                class="absolute right-3 top-9 z-20 w-44 overflow-hidden rounded-lg border border-border bg-popover py-1 text-left shadow-pop"
+                @click.stop
+              >
+                <button class="flex w-full items-center gap-2.5 px-3 py-1.5 text-[12px] hover:bg-surface-hover" type="button" @click="emit('beginRename', folder)">
+                  <FontAwesomeIcon class="h-3.5 w-3.5 text-muted-foreground" :icon="faPen" />
+                  Rename
+                </button>
+                <button class="flex w-full items-center gap-2.5 px-3 py-1.5 text-[12px] hover:bg-surface-hover" type="button">
+                  <FontAwesomeIcon class="h-3.5 w-3.5 text-muted-foreground" :icon="faDownload" />
+                  Download
+                </button>
+                <div class="my-1 h-px bg-border" />
+                <button class="flex w-full items-center gap-2.5 px-3 py-1.5 text-[12px] text-destructive hover:bg-destructive-soft" type="button" @click="emit('deleteFolder', folder.id)">
+                  <FontAwesomeIcon class="h-3.5 w-3.5" :icon="faTrash" />
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+        </template>
       </tbody>
     </table>
 

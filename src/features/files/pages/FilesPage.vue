@@ -168,6 +168,7 @@ async function openFolder(folder: RootFolder) {
     return;
   }
 
+  loadingDirectory.value = true;
   const parentLocation = currentLocation();
   const location = {
     path: folder.path,
@@ -176,24 +177,29 @@ async function openFolder(folder: RootFolder) {
 
   navigationStack.value = [...navigationStack.value, location];
   setCurrentDirectory(location);
-
-  if (!directoryCache.has(cacheKey(location))) {
-    await loadDirectory(location, folder, parentLocation);
-  }
+  await loadDirectory(location, folder, parentLocation);
 }
 
-function navigateRoot() {
-  navigationStack.value = [{ path: null, directoryId: null }];
-  setCurrentDirectory(currentLocation());
-}
-
-function navigateParent() {
-  if (navigationStack.value.length <= 1) {
+async function navigateRoot() {
+  if (loadingDirectory.value) {
     return;
   }
 
+  loadingDirectory.value = true;
+  navigationStack.value = [{ path: null, directoryId: null }];
+  setCurrentDirectory(currentLocation());
+  await loadDirectory(currentLocation());
+}
+
+async function navigateParent() {
+  if (navigationStack.value.length <= 1 || loadingDirectory.value) {
+    return;
+  }
+
+  loadingDirectory.value = true;
   navigationStack.value = navigationStack.value.slice(0, -1);
   setCurrentDirectory(currentLocation());
+  await loadDirectory(currentLocation());
 }
 
 async function navigatePath(path: string) {
@@ -205,6 +211,7 @@ async function navigatePath(path: string) {
   const stackIndex = navigationStack.value.findIndex((location) => location.path === normalizedPath);
 
   if (stackIndex !== -1) {
+    loadingDirectory.value = true;
     navigationStack.value = navigationStack.value.slice(0, stackIndex + 1);
     navigationStack.value[stackIndex] = {
       path: normalizedPath,
@@ -216,10 +223,10 @@ async function navigatePath(path: string) {
     return;
   }
 
-  const directoryId = await resolveDirectoryIdByPath(normalizedPath);
-  const location = { path: normalizedPath, directoryId };
+  const location = { path: normalizedPath, directoryId: directoryIdByPath.get(normalizedPath) ?? null };
 
-  navigationStack.value = buildNavigationStack(normalizedPath, directoryId);
+  loadingDirectory.value = true;
+  navigationStack.value = buildNavigationStack(normalizedPath, location.directoryId);
   setCurrentDirectory(location);
   await loadDirectory(location);
 }
@@ -279,7 +286,9 @@ async function loadDirectory(location: DirectoryLocation, sourceFolder?: RootFol
   loadingDirectory.value = true;
 
   try {
-    const directoryId = location.directoryId ?? (sourceFolder ? await resolveDirectoryId(sourceFolder, parentLocation ?? currentLocation()) : null);
+    const directoryId =
+      location.directoryId ??
+      (sourceFolder ? await resolveDirectoryId(sourceFolder, parentLocation ?? currentLocation()) : location.path ? await resolveDirectoryIdByPath(location.path) : null);
 
     if (directoryId) {
       location.directoryId = directoryId;
@@ -416,7 +425,7 @@ function rememberDirectoryIds(entries: RootFolder[]) {
         v-model:renaming-id="renamingId"
         v-model:rename-value="renameValue"
         :folders="filteredFolders"
-        :hydrating="loadingDirectory && folders.length === 0"
+        :hydrating="loadingDirectory"
         :selected="selected"
         @begin-rename="beginRename"
         @delete-folder="deleteFolder"
