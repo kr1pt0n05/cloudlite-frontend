@@ -32,9 +32,6 @@ pub async fn run() {
     ));
 
     let db_service = Arc::new(DBService::new().await);
-    db_service.create_changelogs_if_not_exists().await.expect("Failed to create changelogs table");
-    db_service.create_local_fs_directory_if_not_exists().await.expect("Failed to create local_fs_directories table");
-    db_service.create_local_fs_file_if_not_exists().await.expect("Failed to create local_fs_files table");
 
     let fs_service = Arc::new(FilesystemService::new());
 
@@ -48,6 +45,16 @@ pub async fn run() {
         Arc::clone(&db_service),
         Arc::clone(&fs_service)
     ));
+
+
+    // Development only
+    // ToDo: Remove for production
+    db_service.drop_all_tables().await;
+    fs_service.remove_base_directory();
+
+    db_service.create_changelogs_if_not_exists().await.expect("Failed to create changelogs table");
+    db_service.create_local_fs_directory_if_not_exists().await.expect("Failed to create local_fs_directories table");
+    db_service.create_local_fs_file_if_not_exists().await.expect("Failed to create local_fs_files table");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())

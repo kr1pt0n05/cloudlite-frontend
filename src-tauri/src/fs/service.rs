@@ -53,4 +53,8 @@ impl FilesystemService {
         root.join(folder_name)
     }
 
+    pub fn remove_base_directory(&self){
+        fs::remove_dir_all(&self.base_path).map_err(|e| format!("Failed to remove base directory: {}", e)).expect("Failed to remove base directory");
+    }
+
 }

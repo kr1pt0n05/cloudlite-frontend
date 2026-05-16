@@ -64,4 +64,11 @@ impl DBService {
             .await
     }
 
+    pub(crate) async fn drop_local_files_table(&self) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "DROP TABLE IF EXISTS local_fs_files;"
+        ).execute(&self.pool).await?;
+        Ok(())
+    }
+
 }

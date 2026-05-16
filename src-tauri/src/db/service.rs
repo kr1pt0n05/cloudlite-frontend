@@ -23,5 +23,9 @@ impl DBService {
         Self { pool }
     }
 
+    pub async fn drop_all_tables(&self) {
+        self.drop_local_fs_directory_table().await.expect("Failed to drop local_fs_directory table");
+        self.drop_local_files_table().await.expect("Failed to drop local_fs_file table");
+    }
 
 }

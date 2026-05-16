@@ -1,3 +1,4 @@
+use uuid::Uuid;
 use crate::db::local::models::local_fs_directory::LocalFsDirectory;
 use crate::db::service::DBService;
 
@@ -55,6 +56,13 @@ impl DBService {
     )
             .fetch_all(&self.pool)
             .await
+    }
+
+    pub(crate) async fn drop_local_fs_directory_table(&self) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "DROP TABLE IF EXISTS local_fs_directories;"
+        ).execute(&self.pool).await?;
+        Ok(())
     }
 
 }
