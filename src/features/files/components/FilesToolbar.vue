@@ -18,6 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   "update:search": [value: string];
   navigateParent: [];
+  navigatePath: [path: string];
   navigateRoot: [];
   sync: [];
   upload: [];
@@ -28,6 +29,10 @@ const searchPlaceholder = computed(() => {
   const segments = pathSegments.value;
   return `Search ${props.currentDirectory ? segments[segments.length - 1] : "root"}...`;
 });
+
+function segmentPath(index: number) {
+  return pathSegments.value.slice(0, index + 1).join("/");
+}
 </script>
 
 <template>
@@ -81,7 +86,13 @@ const searchPlaceholder = computed(() => {
         </button>
         <template v-for="(segment, index) in pathSegments" :key="`${segment}-${index}`">
           <FontAwesomeIcon class="h-3.5 w-3.5 shrink-0 text-muted-foreground" :icon="faChevronRight" />
-          <span class="min-w-0 break-all rounded px-1.5 py-0.5 text-muted-foreground">{{ segment }}</span>
+          <button
+            class="min-w-0 break-all rounded px-1.5 py-0.5 text-left text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+            type="button"
+            @click="emit('navigatePath', segmentPath(index))"
+          >
+            {{ segment }}
+          </button>
         </template>
       </nav>
     </div>

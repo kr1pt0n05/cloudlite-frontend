@@ -196,6 +196,34 @@ function navigateParent() {
   setCurrentDirectory(currentLocation());
 }
 
+async function navigatePath(path: string) {
+  if (loadingDirectory.value) {
+    return;
+  }
+
+  const normalizedPath = normalizeEntryPath(path);
+  const stackIndex = navigationStack.value.findIndex((location) => location.path === normalizedPath);
+
+  if (stackIndex !== -1) {
+    navigationStack.value = navigationStack.value.slice(0, stackIndex + 1);
+    navigationStack.value[stackIndex] = {
+      path: normalizedPath,
+      directoryId: currentLocation().directoryId ?? directoryIdByPath.get(normalizedPath) ?? null,
+    };
+    setCurrentDirectory(currentLocation());
+    await loadDirectory(currentLocation());
+
+    return;
+  }
+
+  const directoryId = await resolveDirectoryIdByPath(normalizedPath);
+  const location = { path: normalizedPath, directoryId };
+
+  navigationStack.value = buildNavigationStack(normalizedPath, directoryId);
+  setCurrentDirectory(location);
+  await loadDirectory(location);
+}
+
 async function syncFiles() {
   if (syncing.value) {
     return;
@@ -299,6 +327,58 @@ async function resolveDirectoryId(folder: RootFolder, parentLocation: DirectoryL
   return null;
 }
 
+async function resolveDirectoryIdByPath(path: string) {
+  const knownDirectoryId = directoryIdByPath.get(path);
+
+  if (knownDirectoryId) {
+    return knownDirectoryId;
+  }
+
+  const segments = path.split("/").filter(Boolean);
+  let parentLocation: DirectoryLocation = { path: null, directoryId: null };
+  let directoryId: string | null = null;
+
+  for (let index = 0; index < segments.length; index += 1) {
+    const segmentPath = segments.slice(0, index + 1).join("/");
+    const cachedDirectoryId = directoryIdByPath.get(segmentPath);
+
+    if (cachedDirectoryId) {
+      directoryId = cachedDirectoryId;
+      parentLocation = { path: segmentPath, directoryId };
+      continue;
+    }
+
+    const entries = await fetchDirectoryEntries(parentLocation.directoryId, parentLocation.path);
+    rememberDirectoryIds(entries);
+    directoryCache.set(cacheKey(parentLocation), entries);
+
+    const directory = entries.find((entry) => entry.isDirectory && entry.path === segmentPath);
+
+    if (!directory?.directoryId) {
+      return null;
+    }
+
+    directoryId = directory.directoryId;
+    parentLocation = { path: segmentPath, directoryId };
+  }
+
+  return directoryId;
+}
+
+function buildNavigationStack(path: string, directoryId: string | null): DirectoryLocation[] {
+  const segments = path.split("/").filter(Boolean);
+  const locations = segments.map((_, index) => {
+    const segmentPath = segments.slice(0, index + 1).join("/");
+
+    return {
+      path: segmentPath,
+      directoryId: segmentPath === path ? directoryId : directoryIdByPath.get(segmentPath) ?? null,
+    };
+  });
+
+  return [{ path: null, directoryId: null }, ...locations];
+}
+
 function rememberDirectoryIds(entries: RootFolder[]) {
   for (const entry of entries) {
     if (entry.isDirectory && entry.directoryId) {
@@ -315,6 +395,7 @@ function rememberDirectoryIds(entries: RootFolder[]) {
       :current-directory="currentDirectory"
       :syncing="syncing"
       @navigate-parent="navigateParent"
+      @navigate-path="navigatePath"
       @navigate-root="navigateRoot"
       @sync="syncFiles"
     />
