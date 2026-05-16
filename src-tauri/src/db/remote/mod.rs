@@ -1,2 +1,2 @@
-mod models;
-mod repositories;
+pub mod models;
+pub mod repositories;

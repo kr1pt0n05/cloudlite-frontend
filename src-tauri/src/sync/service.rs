@@ -1,7 +1,8 @@
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use crate::api::service::ApiService;
-use crate::db::service::{Changelog, DBService, Status};
+use crate::db::remote::models::remote_changelog::RemoteChangelog;
+use crate::db::service::{DBService, Status};
 use crate::fs::service::FilesystemService;
 
 pub struct SyncService {
@@ -28,7 +29,7 @@ impl SyncService {
 
         // Fetch remote changelogs with latest id
         // ToDo: Add pagination
-        let changelogs: Vec<Changelog> = self.api.get_latest_changelogs(id).await.expect("Failed to get latest changelogs");
+        let changelogs: Vec<RemoteChangelog> = self.api.get_latest_changelogs(id).await.expect("Failed to get latest changelogs");
         println!("Current changelog count: {}", changelogs.len());
 
         // Insert into db

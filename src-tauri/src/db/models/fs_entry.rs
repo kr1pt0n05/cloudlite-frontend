@@ -11,7 +11,7 @@ pub enum SyncState {
 #[derive(Serialize, Deserialize)]
 pub enum FsEntryKind {
     File,
-    Directory,
+    Directory,wwwww
 }
 
 #[derive(Serialize, Deserialize)]

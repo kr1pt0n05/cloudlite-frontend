@@ -19,7 +19,7 @@ pub enum EntityType {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct Changelog {
+pub struct RemoteChangelog {
     pub id: i64,
     pub event_type: EventType,
     pub entity_type: EntityType,
