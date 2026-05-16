@@ -1,3 +1,4 @@
+use std::collections::{HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -49,6 +50,7 @@ impl ExplorerService {
 
         for path in paths {
             let root = Path::new(&path);
+            let mut directory_ids: HashMap<String, String> = HashMap::new(); // Map paths to directory_id's
 
             if let Some(parent) = root.parent() {
                 // Walk each path recursively
@@ -74,14 +76,23 @@ impl ExplorerService {
                             self.fs.create_directory(&path)
                                 .expect("Failed to create directory");
 
+                            // Generate a stable ID for this directory and store a path
+                            // The map allows child entries to quickly resolve their parent directory ID later
+                            // If no parent ID is found, the directory is treated as a root-level entry
+                            let id = Uuid::new_v4().to_string();
+                            let parent_path_str = path.parent().unwrap().to_str().unwrap().to_string();
+                            let path_str = path.to_str().unwrap().to_string(); // ToDo: Handle error
+                            directory_ids.insert(path_str.clone(), id.clone()); // For fast parent look up
+                            let parent_id = directory_ids.get(&parent_path_str).cloned();
+
                             // Save to database
                             // ToDo: Batch
                             self.db.save_local_directory(LocalFsDirectory {
-                                id: Uuid::new_v4().to_string(),
+                                id: id.clone(),
                                 name: entry.file_name().unwrap().to_string_lossy().to_string(), // ToDo: Handle error
-                                path: path.to_str().unwrap().to_string(), // ToDo: Handle error
-                                parent: destination_path.clone(),
-                                created_at: metadata.created().map(system_time_to_datetime).unwrap_or_else(|_| Utc::now().to_rfc3339()), // ToDo: Handle error
+                                path: path_str,
+                                parent: parent_id,
+                                created_at: metadata.created().map(system_time_to_datetime).unwrap_or_else(|_| Utc::now().to_rfc3339()),
                                 updated_at: None,
                             }).await.map_err(|e| format!("Failed to save directory to database: {}", e))?;
 
