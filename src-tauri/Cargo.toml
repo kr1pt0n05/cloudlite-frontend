@@ -29,3 +29,6 @@ reqwest = { version = "0.13.3", features = ["json"] }
 sqlx = { version = "0.8", features = [ "runtime-tokio", "sqlite" ] }
 strum_macros = "0.28.0"
 walkdir = "2.5.0"
+uuid = { version = "1.3.0", features = ["v4"] }
+chrono = "0.4.44"
+mime_guess = "2.0.5"
