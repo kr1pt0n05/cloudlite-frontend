@@ -4,6 +4,7 @@ mod db;
 mod sync;
 mod fs;
 mod explorer;
+mod utils;
 
 use std::sync::Arc;
 use crate::auth::service::{AuthConfig, AuthService};

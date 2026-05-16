@@ -1,13 +1,16 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use chrono::Utc;
 use crate::db::local::models::local_fs_directory::LocalFsDirectory;
 use crate::db::local::models::local_fs_file::LocalFsFile;
 use crate::db::service::DBService;
 use crate::fs::service::FilesystemService;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
+use uuid::Uuid;
 use walkdir::WalkDir;
+use crate::utils::time::system_time_to_datetime;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -62,13 +65,25 @@ impl ExplorerService {
                                 .to_string();
 
                         if entry.is_dir() {
-                            let directory = PathBuf::from(&self.fs.get_base_path())
-                                .join(destination_path.as_deref().unwrap_or_default())
+                            let metadata = entry.metadata().unwrap(); // ToDo: Handle error
+
+                            // Write to filesystem
+                            let path = PathBuf::from(&self.fs.get_base_path())
+                                .join(destination_path.as_deref().unwrap_or_default()) // ToDo: Handle error
                                 .join(stripped);
-                            self.fs.create_directory(directory)
+                            self.fs.create_directory(&path)
                                 .expect("Failed to create directory");
 
-
+                            // Save to database
+                            // ToDo: Batch
+                            self.db.save_local_directory(LocalFsDirectory {
+                                id: Uuid::new_v4().to_string(),
+                                name: entry.file_name().unwrap().to_string_lossy().to_string(), // ToDo: Handle error
+                                path: path.to_str().unwrap().to_string(), // ToDo: Handle error
+                                parent: destination_path.clone(),
+                                created_at: metadata.created().map(system_time_to_datetime).unwrap_or_else(|_| Utc::now().to_rfc3339()), // ToDo: Handle error
+                                updated_at: None,
+                            }).await.map_err(|e| format!("Failed to save directory to database: {}", e))?;
 
                             // Notify frontend
                             app.emit(
@@ -82,12 +97,28 @@ impl ExplorerService {
                         }
                         // ToDo: Error handling
                         if entry.is_file() {
+                            let metadata = entry.metadata().unwrap(); // ToDo: Handle error
                             let source = PathBuf::from(path.path());
+
+                            // Write to filesystem
                             let destination = PathBuf::from(&self.fs.get_base_path())
                                 .join(destination_path.as_deref().unwrap_or_default())
                                 .join(stripped);
-                            fs::copy(source, destination)
+                            fs::copy(&source, destination)
                                 .map_err(|e| format!("Failed to copy file: {}", e))?;
+
+                            // Save to database
+                            // ToDo: Batch
+                            self.db.save_local_file(LocalFsFile {
+                                id: Uuid::new_v4().to_string(),
+                                name: entry.file_name().unwrap().to_string_lossy().to_string(), // ToDo: Handle error
+                                directory: None, // ToDo: Query directory beforehand and insert id here
+                                checksum: None, // ToDo: Calculate checksum
+                                size: metadata.len() as i64,
+                                mime_type: mime_guess::from_path(&source).first_or_octet_stream().to_string(), // ToDo: Handle error and get real mime type, might use infer?
+                                created_at: metadata.created().map(system_time_to_datetime).unwrap_or_else(|_| Utc::now().to_rfc3339()), // ToDo: Handle error
+                                updated_at: None,
+                            }).await.map_err(|e| format!("Failed to save file to database: {}", e))?;
 
                             // Notify frontend
                             app.emit(

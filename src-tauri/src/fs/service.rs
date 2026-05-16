@@ -25,12 +25,12 @@ impl FilesystemService {
         &self.base_path
     }
 
-    pub fn create_directory<P: AsRef<Path>>(&self, path: P) -> Result<(), String> {
+    pub fn create_directory<P: AsRef<Path>>(&self,path: &P) -> Result<(), String> {
         fs::create_dir(path.as_ref()).map_err(|e| format!("Failed to create directory: {}", e))?;
         Ok(())
     }
 
-    pub fn create_directory_all<P: AsRef<Path>>(&self, path: P) -> Result<(), String> {
+    pub fn create_directory_all<P: AsRef<Path>>(&self, path: &P) -> Result<(), String> {
         fs::create_dir_all(path.as_ref())
             .map_err(|e| format!("Failed to create directories: {}", e))?;
         Ok(())
