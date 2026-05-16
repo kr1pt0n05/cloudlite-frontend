@@ -11,10 +11,9 @@ use crate::api::service::{ApiService};
 use crate::auth::commands::{begin_login, confirm_login, is_authenticated};
 use crate::sync::commands::run_sync;
 use crate::db::service::DBService;
-use crate::fs::commands::receive_dropped_paths;
 use crate::fs::service::FilesystemService;
 use crate::sync::service::SyncService;
-use crate::explorer::commands::get_directory_entries;
+use crate::explorer::commands::{get_directory_entries, receive_dropped_paths};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub async fn run() {

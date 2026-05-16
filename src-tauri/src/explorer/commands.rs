@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use tauri::AppHandle;
 use crate::explorer::service::{DirectoryEntries, ExplorerService};
 
 // ToDo: Properly map errors
@@ -10,3 +11,16 @@ pub async fn get_directory_entries(
     state.get_directory_entries(directory_id).await
         .map_err(|error| error.to_string())
 }
+
+#[tauri::command]
+pub async fn receive_dropped_paths(
+    paths: Vec<String>,
+    destination_path: Option<String>,
+    app: AppHandle,
+    state: tauri::State<'_, Arc<ExplorerService>>,
+) -> Result<(), String> {
+    state
+        .write_dropped_paths(app, paths, destination_path)
+        .await
+}
+
