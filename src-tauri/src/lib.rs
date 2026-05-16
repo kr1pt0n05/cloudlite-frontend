@@ -52,6 +52,8 @@ pub async fn run() {
     db_service.drop_all_tables().await;
     fs_service.remove_base_directory();
 
+    fs_service.create_base_directory();
+
     db_service.create_changelogs_if_not_exists().await.expect("Failed to create changelogs table");
     db_service.create_local_fs_directory_if_not_exists().await.expect("Failed to create local_fs_directories table");
     db_service.create_local_fs_file_if_not_exists().await.expect("Failed to create local_fs_files table");

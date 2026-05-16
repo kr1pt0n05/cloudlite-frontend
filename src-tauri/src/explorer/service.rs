@@ -80,17 +80,33 @@ impl ExplorerService {
                             // The map allows child entries to quickly resolve their parent directory ID later
                             // If no parent ID is found, the directory is treated as a root-level entry
                             let id = Uuid::new_v4().to_string();
-                            let parent_path_str = path.parent().unwrap().to_str().unwrap().to_string();
-                            let path_str = path.to_str().unwrap().to_string(); // ToDo: Handle error
-                            directory_ids.insert(path_str.clone(), id.clone()); // For fast parent look up
-                            let parent_id = directory_ids.get(&parent_path_str).cloned();
+
+                            let relative_path = self.fs.to_relative_path(path.as_path())?;
+                            let relative_path_str = relative_path
+                                .to_str()
+                                .ok_or_else(|| "Invalid UTF-8 in path".to_string())?
+                                .to_string();
+
+                            let parent_id = path
+                                .parent()
+                                .and_then(|parent_path| self.fs.to_relative_path(parent_path).ok())
+                                .and_then(|relative_parent_path| {
+                                    relative_parent_path
+                                        .to_str()
+                                        .map(|s| s.to_string())
+                                })
+                                .and_then(|relative_parent_path_str| {
+                                    directory_ids.get(&relative_parent_path_str).cloned()
+                                });
+
+                            directory_ids.insert(relative_path_str.clone(), id.clone());
 
                             // Save to database
                             // ToDo: Batch
                             self.db.save_local_directory(LocalFsDirectory {
                                 id: id.clone(),
                                 name: entry.file_name().unwrap().to_string_lossy().to_string(), // ToDo: Handle error
-                                path: path_str,
+                                path: relative_path_str,
                                 parent: parent_id,
                                 created_at: metadata.created().map(system_time_to_datetime).unwrap_or_else(|_| Utc::now().to_rfc3339()),
                                 updated_at: None,

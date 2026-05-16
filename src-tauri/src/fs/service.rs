@@ -25,6 +25,12 @@ impl FilesystemService {
         &self.base_path
     }
 
+    pub fn to_relative_path(&self, path: &Path) -> Result<PathBuf, String> {
+        path.strip_prefix(self.get_base_path())
+            .map(|relative| relative.to_path_buf())
+            .map_err(|_| format!("Path is not inside base path: {}", path.display()))
+    }
+
     pub fn create_directory<P: AsRef<Path>>(&self,path: &P) -> Result<(), String> {
         fs::create_dir(path.as_ref()).map_err(|e| format!("Failed to create directory: {}", e))?;
         Ok(())
@@ -53,8 +59,12 @@ impl FilesystemService {
         root.join(folder_name)
     }
 
-    pub fn remove_base_directory(&self){
-        fs::remove_dir_all(&self.base_path).map_err(|e| format!("Failed to remove base directory: {}", e)).expect("Failed to remove base directory");
+    pub fn create_base_directory(&self) {
+        fs::create_dir_all(&self.base_path).expect("Failed to create base directory");
+    }
+
+    pub fn remove_base_directory(&self) {
+        fs::remove_dir_all(&self.base_path).ok();
     }
 
 }
