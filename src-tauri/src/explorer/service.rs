@@ -131,15 +131,27 @@ impl ExplorerService {
                             let destination = PathBuf::from(&self.fs.get_base_path())
                                 .join(destination_path.as_deref().unwrap_or_default())
                                 .join(stripped);
-                            fs::copy(&source, destination)
+                            fs::copy(&source, &destination)
                                 .map_err(|e| format!("Failed to copy file: {}", e))?;
+
+                            let directory_id = destination
+                                .parent()
+                                .and_then(|parent_path| self.fs.to_relative_path(parent_path).ok())
+                                .and_then(|relative_parent_path| {
+                                    relative_parent_path
+                                        .to_str()
+                                        .map(|s| s.to_string())
+                                })
+                                .and_then(|relative_parent_path_str| {
+                                    directory_ids.get(&relative_parent_path_str).cloned()
+                                });
 
                             // Save to database
                             // ToDo: Batch
                             self.db.save_local_file(LocalFsFile {
                                 id: Uuid::new_v4().to_string(),
                                 name: entry.file_name().unwrap().to_string_lossy().to_string(), // ToDo: Handle error
-                                directory: None, // ToDo: Query directory beforehand and insert id here
+                                directory: directory_id, // ToDo: Query directory beforehand and insert id here
                                 checksum: None, // ToDo: Calculate checksum
                                 size: metadata.len() as i64,
                                 mime_type: mime_guess::from_path(&source).first_or_octet_stream().to_string(), // ToDo: Handle error and get real mime type, might use infer?
@@ -169,7 +181,6 @@ impl ExplorerService {
 
         // Write batches to sqlite
 
-        // Notify frontend
         Ok(())
     }
 
