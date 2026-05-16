@@ -11,7 +11,11 @@ impl DBService {
                 path TEXT NOT NULL,
                 parent TEXT,
                 created_at TEXT NOT NULL,
-                updated_at TEXT
+                updated_at TEXT,
+
+                FOREIGN KEY (parent)
+                    REFERENCES local_fs_directories(id)
+                    ON DELETE CASCADE
             );"
         ).execute(&self.pool).await?;
         Ok(())
