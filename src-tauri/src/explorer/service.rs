@@ -158,6 +158,35 @@ impl ExplorerService {
         Ok(renamed_name)
     }
 
+    pub async fn delete_file(&self, file_id: String) -> Result<(), String> {
+        let file = self
+            .db
+            .get_file_by_id(&file_id)
+            .await
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "File not found".to_string())?;
+
+        let relative_parent_path = self
+            .db
+            .get_local_file_path_by_file_id(&file_id)
+            .await
+            .map_err(|e| e.to_string())?
+            .unwrap_or_default();
+        let absolute_file_path = self
+            .fs
+            .to_absolute_path(&relative_parent_path)
+            .map_err(|e| e.to_string())?
+            .join(&file.name);
+
+        self.fs.remove_file(&absolute_file_path)?;
+        self.db
+            .delete_local_file(&file_id)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
     // ToDo: Handle errors, e.g. if a directory does not exist, give user feedback
     // ToDo: Refactor this function
     pub async fn write_dropped_paths(

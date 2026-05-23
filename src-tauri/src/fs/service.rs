@@ -40,7 +40,7 @@ impl FilesystemService {
             .map_err(|e| format!("Failed to resolve absolute path: {}", e))
     }
 
-    pub fn create_directory<P: AsRef<Path>>(&self,path: &P) -> Result<(), String> {
+    pub fn create_directory<P: AsRef<Path>>(&self, path: &P) -> Result<(), String> {
         fs::create_dir(path.as_ref()).map_err(|e| format!("Failed to create directory: {}", e))?;
         Ok(())
     }
@@ -54,6 +54,14 @@ impl FilesystemService {
     pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(&self, from: P, to: Q) -> Result<(), String> {
         fs::rename(from.as_ref(), to.as_ref()).map_err(|e| format!("Failed to rename: {}", e))?;
         Ok(())
+    }
+
+    pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> Result<(), String> {
+        match fs::remove_file(path.as_ref()) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(format!("Failed to delete file: {}", error)),
+        }
     }
 
     pub fn metadata<P: AsRef<Path>>(&self, path: P) -> Result<Metadata, String> {
@@ -84,5 +92,4 @@ impl FilesystemService {
     pub fn remove_base_directory(&self) {
         fs::remove_dir_all(&self.base_path).ok();
     }
-
 }

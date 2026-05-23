@@ -15,6 +15,14 @@ pub async fn get_directory_entries(
 }
 
 #[tauri::command]
+pub async fn delete_file(
+    file_id: String,
+    state: tauri::State<'_, Arc<ExplorerService>>,
+) -> Result<(), String> {
+    state.delete_file(file_id).await
+}
+
+#[tauri::command]
 pub async fn rename_directory(
     directory_id: String,
     name: String,

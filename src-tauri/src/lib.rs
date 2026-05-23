@@ -14,7 +14,7 @@ use crate::sync::commands::run_sync;
 use crate::db::service::DBService;
 use crate::fs::service::FilesystemService;
 use crate::sync::service::SyncService;
-use crate::explorer::commands::{get_directory_entries, receive_dropped_paths, rename_directory, rename_file};
+use crate::explorer::commands::{delete_file, get_directory_entries, receive_dropped_paths, rename_directory, rename_file};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub async fn run() {
@@ -71,6 +71,7 @@ pub async fn run() {
             confirm_login,
             is_authenticated,
             run_sync,
+            delete_file,
             receive_dropped_paths,
             get_directory_entries,
             rename_directory,

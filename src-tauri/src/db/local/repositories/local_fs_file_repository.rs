@@ -92,6 +92,17 @@ impl DBService {
         Ok(())
     }
 
+    pub async fn delete_local_file(&self, id: &str) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "DELETE FROM local_fs_files
+            WHERE id = ?1",
+            id
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn save_local_file(&self, file: LocalFsFile) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "INSERT INTO local_fs_files (id, name, directory, checksum, size, mime_type, created_at)
