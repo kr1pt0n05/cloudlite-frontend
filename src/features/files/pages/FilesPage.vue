@@ -297,7 +297,7 @@ async function handleDroppedPaths(paths: string[]) {
   }
 
   try {
-    await invoke<void>("receive_dropped_paths", { paths, destinationPath: currentDirectory.value });
+    await invoke<void>("receive_dropped_paths", { paths, destinationDirectoryId: currentLocation().directoryId });
   } catch (error) {
     console.error("Failed to process dropped files", error);
   }

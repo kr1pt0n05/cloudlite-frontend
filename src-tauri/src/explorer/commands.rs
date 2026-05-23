@@ -35,11 +35,11 @@ pub async fn rename_file(
 #[tauri::command]
 pub async fn receive_dropped_paths(
     paths: Vec<String>,
-    destination_path: Option<String>,
+    destination_directory_id: Option<String>,
     app: AppHandle,
     state: tauri::State<'_, Arc<ExplorerService>>,
 ) -> Result<(), String> {
     state
-        .write_dropped_paths(app, paths, destination_path)
+        .write_dropped_paths(app, paths, destination_directory_id)
         .await
 }

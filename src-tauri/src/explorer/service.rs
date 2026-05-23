@@ -42,7 +42,7 @@ impl ExplorerService {
     pub async fn rename_directory(
         &self,
         directory_id: String,
-        name: String
+        name: String,
     ) -> Result<String, String> {
         if name.trim().is_empty() || Path::new(&name).file_name().is_none() {
             return Err("Directory name cannot be empty".to_string());
@@ -59,7 +59,12 @@ impl ExplorerService {
             .map_err(|e| e.to_string())?
             .ok_or_else(|| "Directory not found".to_string())?;
 
-        let relative_path = PathBuf::from(&directory.path);
+        let relative_path = self
+            .db
+            .get_local_directory_path_by_id(&directory_id)
+            .await
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "Directory path not found".to_string())?;
 
         let absolute_path = self
             .fs
@@ -159,21 +164,28 @@ impl ExplorerService {
         &self,
         app: AppHandle,
         paths: Vec<String>,
-        destination_path: Option<String>,
+        destination_directory_id: Option<String>,
     ) -> Result<(), String> {
         // Map to store directory paths and their generated IDs for quick lookup when processing files
         let mut directory_ids: HashMap<String, String> = HashMap::new();
+        let destination_path =
+            if let Some(destination_directory_id) = destination_directory_id.as_ref() {
+                let destination_path = self
+                    .db
+                    .get_local_directory_path_by_id(destination_directory_id)
+                    .await
+                    .map_err(|e| format!("Failed to query destination directory path: {}", e))?
+                    .ok_or_else(|| "Destination directory not found in database.".to_string())?;
+                let destination_path_str = destination_path
+                    .to_str()
+                    .ok_or_else(|| "Invalid UTF-8 in destination path".to_string())?
+                    .to_string();
 
-        if let Some(destination) = destination_path.as_ref() {
-            let destination_directory_id = self
-                .db
-                .get_directory_by_path(destination)
-                .await
-                .map_err(|e| format!("Failed to query destination directory: {}", e))?
-                .ok_or_else(|| "Destination directory not found in database.".to_string())?;
-
-            directory_ids.insert(destination.clone(), destination_directory_id);
-        }
+                directory_ids.insert(destination_path_str, destination_directory_id.clone());
+                destination_path
+            } else {
+                PathBuf::new()
+            };
 
         for path in paths {
             let root = Path::new(&path);
@@ -186,18 +198,17 @@ impl ExplorerService {
                     // Root = /home/user/Folder1, entry = /home/user/Folder1/Subfolder1/File.txt
                     // Stripped = Folder1/Subfolder1/File.txt
                     if let Ok(stripped) = entry.strip_prefix(parent) {
-                        let event_path =
-                            PathBuf::from(destination_path.as_deref().unwrap_or_default())
-                                .join(stripped)
-                                .to_string_lossy()
-                                .to_string();
+                        let event_path = destination_path
+                            .join(stripped)
+                            .to_string_lossy()
+                            .to_string();
 
                         if entry.is_dir() {
                             let metadata = entry.metadata().unwrap(); // ToDo: Handle error
 
                             // Write to filesystem
                             let path = PathBuf::from(&self.fs.get_base_path())
-                                .join(destination_path.as_deref().unwrap_or_default()) // ToDo: Handle error
+                                .join(&destination_path) // ToDo: Handle error
                                 .join(stripped);
                             self.fs
                                 .create_directory(&path)
@@ -232,7 +243,6 @@ impl ExplorerService {
                                 .save_local_directory(LocalFsDirectory {
                                     id: id.clone(),
                                     name: entry.file_name().unwrap().to_string_lossy().to_string(), // ToDo: Handle error
-                                    path: relative_path_str,
                                     parent: parent_id,
                                     created_at: metadata
                                         .created()
@@ -263,7 +273,7 @@ impl ExplorerService {
 
                             // Write to filesystem
                             let destination = PathBuf::from(&self.fs.get_base_path())
-                                .join(destination_path.as_deref().unwrap_or_default())
+                                .join(&destination_path)
                                 .join(stripped);
                             fs::copy(&source, &destination)
                                 .map_err(|e| format!("Failed to copy file: {}", e))?;

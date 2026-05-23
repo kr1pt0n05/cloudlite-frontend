@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use crate::db::local::models::local_fs_file::LocalFsFile;
 use crate::db::service::DBService;
+use std::path::PathBuf;
 
 impl DBService {
     pub async fn create_local_fs_file_if_not_exists(&self) -> Result<(), sqlx::Error> {
@@ -29,8 +29,8 @@ impl DBService {
 
     pub async fn get_file_by_id(&self, id: &str) -> Result<Option<LocalFsFile>, sqlx::Error> {
         sqlx::query_as!(
-        LocalFsFile,
-        r#"
+            LocalFsFile,
+            r#"
         SELECT
             id as "id!",
             name,
@@ -43,27 +43,30 @@ impl DBService {
         FROM local_fs_files
         WHERE id = $1
         "#,
-        id
-    )
+            id
+        )
         .fetch_optional(&self.pool)
         .await
     }
 
-    pub async fn get_local_file_path_by_file_id(&self, id: &str) -> Result<Option<PathBuf>, sqlx::Error> {
+    pub async fn get_local_file_path_by_file_id(
+        &self,
+        id: &str,
+    ) -> Result<Option<PathBuf>, sqlx::Error> {
         let row = sqlx::query!(
-            "SELECT path
-            FROM local_fs_directories
-            WHERE id = (
-                SELECT directory
-                FROM local_fs_files
-                WHERE id = $1
-            )",
+            "SELECT directory
+            FROM local_fs_files
+            WHERE id = $1",
             id
         )
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|row| PathBuf::from(row.path)))
+        if let Some(directory_id) = row.and_then(|row| row.directory) {
+            return self.get_local_directory_path_by_id(&directory_id).await;
+        }
+
+        Ok(Some(PathBuf::new()))
     }
 
     pub async fn patch_local_file(&self, updated_file: LocalFsFile) -> Result<(), sqlx::Error> {
@@ -83,7 +86,9 @@ impl DBService {
             updated_file.mime_type,
             updated_file.updated_at,
             updated_file.id
-        ).execute(&self.pool).await?;
+        )
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
 
