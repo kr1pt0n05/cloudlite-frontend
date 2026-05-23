@@ -1,17 +1,17 @@
-use std::collections::{HashMap};
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use chrono::Utc;
 use crate::db::local::models::local_fs_directory::LocalFsDirectory;
 use crate::db::local::models::local_fs_file::LocalFsFile;
 use crate::db::service::DBService;
 use crate::fs::service::FilesystemService;
+use crate::utils::time::system_time_to_datetime;
+use chrono::Utc;
 use serde::Serialize;
+use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 use walkdir::WalkDir;
-use crate::utils::time::system_time_to_datetime;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -30,27 +30,39 @@ impl ExplorerService {
         Self { db, fs }
     }
 
-    pub async fn get_directory_entries(&self, directory_id: Option<String>) -> Result<DirectoryEntries, sqlx::Error> {
+    pub async fn get_directory_entries(
+        &self,
+        directory_id: Option<String>,
+    ) -> Result<DirectoryEntries, sqlx::Error> {
         let directories = self.db.get_subdirectories(&directory_id).await?;
         let files = self.db.get_files_of_directory(&directory_id).await?;
         Ok(DirectoryEntries { directories, files })
     }
 
     // ToDo: Handle errors, e.g. if a directory does not exist, give user feedback
+    // ToDo: Refactor this function
     pub async fn write_dropped_paths(
         &self,
         app: AppHandle,
         paths: Vec<String>,
         destination_path: Option<String>,
     ) -> Result<(), String> {
-        // Convert user's absolute path to relative path to tauri's app volume
-        // Important: Append relative to destination_path (relative path where user dropped the directory/file)
-        // Copy from path, e.g. /home/user/dropped/file.txt
-        // to path, e.g. tauri_base_path/dropped/file.txt
+        // Map to store directory paths and their generated IDs for quick lookup when processing files
+        let mut directory_ids: HashMap<String, String> = HashMap::new();
+
+        if let Some(destination) = destination_path.as_ref() {
+            let destination_directory_id = self
+                .db
+                .get_directory_by_path(destination)
+                .await
+                .map_err(|e| format!("Failed to query destination directory: {}", e))?
+                .ok_or_else(|| "Destination directory not found in database.".to_string())?;
+
+            directory_ids.insert(destination.clone(), destination_directory_id);
+        }
 
         for path in paths {
             let root = Path::new(&path);
-            let mut directory_ids: HashMap<String, String> = HashMap::new(); // Map paths to directory_id's
 
             if let Some(parent) = root.parent() {
                 // Walk each path recursively
@@ -73,7 +85,8 @@ impl ExplorerService {
                             let path = PathBuf::from(&self.fs.get_base_path())
                                 .join(destination_path.as_deref().unwrap_or_default()) // ToDo: Handle error
                                 .join(stripped);
-                            self.fs.create_directory(&path)
+                            self.fs
+                                .create_directory(&path)
                                 .expect("Failed to create directory");
 
                             // Generate a stable ID for this directory and store a path
@@ -91,9 +104,7 @@ impl ExplorerService {
                                 .parent()
                                 .and_then(|parent_path| self.fs.to_relative_path(parent_path).ok())
                                 .and_then(|relative_parent_path| {
-                                    relative_parent_path
-                                        .to_str()
-                                        .map(|s| s.to_string())
+                                    relative_parent_path.to_str().map(|s| s.to_string())
                                 })
                                 .and_then(|relative_parent_path_str| {
                                     directory_ids.get(&relative_parent_path_str).cloned()
@@ -103,14 +114,22 @@ impl ExplorerService {
 
                             // Save to database
                             // ToDo: Batch
-                            self.db.save_local_directory(LocalFsDirectory {
-                                id: id.clone(),
-                                name: entry.file_name().unwrap().to_string_lossy().to_string(), // ToDo: Handle error
-                                path: relative_path_str,
-                                parent: parent_id,
-                                created_at: metadata.created().map(system_time_to_datetime).unwrap_or_else(|_| Utc::now().to_rfc3339()),
-                                updated_at: None,
-                            }).await.map_err(|e| format!("Failed to save directory to database: {}", e))?;
+                            self.db
+                                .save_local_directory(LocalFsDirectory {
+                                    id: id.clone(),
+                                    name: entry.file_name().unwrap().to_string_lossy().to_string(), // ToDo: Handle error
+                                    path: relative_path_str,
+                                    parent: parent_id,
+                                    created_at: metadata
+                                        .created()
+                                        .map(system_time_to_datetime)
+                                        .unwrap_or_else(|_| Utc::now().to_rfc3339()),
+                                    updated_at: None,
+                                })
+                                .await
+                                .map_err(|e| {
+                                    format!("Failed to save directory to database: {}", e)
+                                })?;
 
                             // Notify frontend
                             app.emit(
@@ -120,7 +139,7 @@ impl ExplorerService {
                                     is_directory: true,
                                 },
                             )
-                                .expect("Failed to emit filesystem entry created");
+                            .expect("Failed to emit filesystem entry created");
                         }
                         // ToDo: Error handling
                         if entry.is_file() {
@@ -138,9 +157,7 @@ impl ExplorerService {
                                 .parent()
                                 .and_then(|parent_path| self.fs.to_relative_path(parent_path).ok())
                                 .and_then(|relative_parent_path| {
-                                    relative_parent_path
-                                        .to_str()
-                                        .map(|s| s.to_string())
+                                    relative_parent_path.to_str().map(|s| s.to_string())
                                 })
                                 .and_then(|relative_parent_path_str| {
                                     directory_ids.get(&relative_parent_path_str).cloned()
@@ -148,16 +165,24 @@ impl ExplorerService {
 
                             // Save to database
                             // ToDo: Batch
-                            self.db.save_local_file(LocalFsFile {
-                                id: Uuid::new_v4().to_string(),
-                                name: entry.file_name().unwrap().to_string_lossy().to_string(), // ToDo: Handle error
-                                directory: directory_id, // ToDo: Query directory beforehand and insert id here
-                                checksum: None, // ToDo: Calculate checksum
-                                size: metadata.len() as i64,
-                                mime_type: mime_guess::from_path(&source).first_or_octet_stream().to_string(), // ToDo: Handle error and get real mime type, might use infer?
-                                created_at: metadata.created().map(system_time_to_datetime).unwrap_or_else(|_| Utc::now().to_rfc3339()), // ToDo: Handle error
-                                updated_at: None,
-                            }).await.map_err(|e| format!("Failed to save file to database: {}", e))?;
+                            self.db
+                                .save_local_file(LocalFsFile {
+                                    id: Uuid::new_v4().to_string(),
+                                    name: entry.file_name().unwrap().to_string_lossy().to_string(), // ToDo: Handle error
+                                    directory: directory_id, // ToDo: Query directory beforehand and insert id here
+                                    checksum: None,          // ToDo: Calculate checksum
+                                    size: metadata.len() as i64,
+                                    mime_type: mime_guess::from_path(&source)
+                                        .first_or_octet_stream()
+                                        .to_string(), // ToDo: Handle error and get real mime type, might use infer?
+                                    created_at: metadata
+                                        .created()
+                                        .map(system_time_to_datetime)
+                                        .unwrap_or_else(|_| Utc::now().to_rfc3339()), // ToDo: Handle error
+                                    updated_at: None,
+                                })
+                                .await
+                                .map_err(|e| format!("Failed to save file to database: {}", e))?;
 
                             // Notify frontend
                             app.emit(
@@ -167,7 +192,7 @@ impl ExplorerService {
                                     is_directory: false,
                                 },
                             )
-                                .expect("Failed to emit filesystem entry created");
+                            .expect("Failed to emit filesystem entry created");
                         }
                     }
                 }
@@ -183,5 +208,4 @@ impl ExplorerService {
 
         Ok(())
     }
-
 }
