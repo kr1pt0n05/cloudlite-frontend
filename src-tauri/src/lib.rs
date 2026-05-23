@@ -57,6 +57,7 @@ pub async fn run() {
     db_service.create_changelogs_if_not_exists().await.expect("Failed to create changelogs table");
     db_service.create_local_fs_directory_if_not_exists().await.expect("Failed to create local_fs_directories table");
     db_service.create_local_fs_file_if_not_exists().await.expect("Failed to create local_fs_files table");
+    db_service.create_sync_queue_if_not_exists().await.expect("Failed to create sync_queue_jobs table");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
