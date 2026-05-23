@@ -39,6 +39,62 @@ impl ExplorerService {
         Ok(DirectoryEntries { directories, files })
     }
 
+    pub async fn rename_directory(
+        &self,
+        directory_id: String,
+        name: String
+    ) -> Result<String, String> {
+        if name.trim().is_empty() || Path::new(&name).file_name().is_none() {
+            return Err("Directory name cannot be empty".to_string());
+        }
+
+        if Path::new(&name).components().count() != 1 {
+            return Err("Directory name cannot include path separators".to_string());
+        }
+
+        let mut directory = self
+            .db
+            .get_local_directory_by_id(&directory_id)
+            .await
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "Directory not found".to_string())?;
+
+        let relative_path = PathBuf::from(&directory.path);
+
+        let absolute_path = self
+            .fs
+            .to_absolute_path(&relative_path)
+            .map_err(|e| e.to_string())?;
+
+        let renamed_absolute_path = absolute_path.parent().unwrap().join(&name);
+
+        self.fs
+            .rename(&absolute_path, &renamed_absolute_path)
+            .map_err(|e| e.to_string())?;
+
+        let metadata = self
+            .fs
+            .metadata(&renamed_absolute_path)
+            .map_err(|e| e.to_string())?;
+
+        // Overwrite directory
+        directory.name = name;
+        directory.updated_at = Option::from(
+            metadata
+                .modified()
+                .map(system_time_to_datetime)
+                .unwrap_or_else(|_| Utc::now().to_rfc3339()),
+        );
+        let renamed_name = directory.name.clone();
+
+        self.db
+            .patch_local_directory(directory)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(renamed_name)
+    }
+
     pub async fn rename_file(&self, file_id: String, filename: String) -> Result<String, String> {
         if filename.trim().is_empty() || Path::new(&filename).file_name().is_none() {
             return Err("Filename cannot be empty".to_string());
@@ -57,7 +113,7 @@ impl ExplorerService {
 
         let relative_parent_path = self
             .db
-            .get_file_path_by_file_id(&file_id)
+            .get_local_file_path_by_file_id(&file_id)
             .await
             .map_err(|e| e.to_string())?
             .unwrap_or_default();

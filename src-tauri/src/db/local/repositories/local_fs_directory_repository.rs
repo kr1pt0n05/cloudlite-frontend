@@ -23,6 +23,46 @@ impl DBService {
         Ok(())
     }
 
+    pub async fn get_local_directory_by_id(&self, id: &str) -> Result<Option<LocalFsDirectory>, sqlx::Error> {
+        sqlx::query_as!(
+            LocalFsDirectory,
+            r#"
+            SELECT
+                id as "id!",
+                name,
+                path,
+                parent,
+                created_at,
+                updated_at
+            FROM local_fs_directories
+            WHERE id = $1
+            "#,
+            id
+        )
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    pub async fn patch_local_directory(&self, updated_directory: LocalFsDirectory) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE local_fs_directories
+            SET
+                name = COALESCE(?1, name),
+                path = COALESCE(?2, path),
+                parent = COALESCE(?3, parent),
+                created_at = COALESCE(?4, created_at),
+                updated_at = COALESCE(?5, updated_at)
+            WHERE id = ?6",
+            updated_directory.name,
+            updated_directory.path,
+            updated_directory.parent,
+            updated_directory.created_at,
+            updated_directory.updated_at,
+            updated_directory.id
+        ).execute(&self.pool).await?;
+        Ok(())
+    }
+
     pub async fn save_local_directory(
         &self,
         directory: LocalFsDirectory,

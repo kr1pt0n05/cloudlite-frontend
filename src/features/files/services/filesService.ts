@@ -131,6 +131,10 @@ export function renameFile(fileId: string, filename: string): Promise<string> {
   return invoke<string>("rename_file", { fileId, filename });
 }
 
+export function renameDirectory(directoryId: string, name: string): Promise<string> {
+  return invoke<string>("rename_directory", { directoryId, name });
+}
+
 export function upsertEntry(entries: RootFolder[], entry: RootFolder): RootFolder[] {
   if (entries.some((item) => item.path === entry.path)) {
     return entries;

@@ -49,7 +49,7 @@ impl DBService {
         .await
     }
 
-    pub async fn get_file_path_by_file_id(&self, id: &str) -> Result<Option<PathBuf>, sqlx::Error> {
+    pub async fn get_local_file_path_by_file_id(&self, id: &str) -> Result<Option<PathBuf>, sqlx::Error> {
         let row = sqlx::query!(
             "SELECT path
             FROM local_fs_directories

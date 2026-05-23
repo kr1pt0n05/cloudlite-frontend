@@ -13,6 +13,7 @@ import {
   fetchRootFolders,
   getParentDirectory,
   normalizeEntryPath,
+  renameDirectory,
   renameFile,
   upsertEntry,
   type DirectoryPath,
@@ -150,10 +151,10 @@ async function saveRename() {
   }
 
   try {
-    const renamedName = entry.isDirectory ? name : await renameFile(id, name);
+    const renamedName = entry.isDirectory ? await renameDirectory(id, name) : await renameFile(id, name);
     updateRenamedEntry(id, renamedName);
   } catch (error) {
-    console.error("Failed to rename file", error);
+    console.error(`Failed to rename ${entry.isDirectory ? "directory" : "file"}`, error);
   } finally {
     renamingId.value = null;
     renameValue.value = "";

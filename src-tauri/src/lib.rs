@@ -14,7 +14,7 @@ use crate::sync::commands::run_sync;
 use crate::db::service::DBService;
 use crate::fs::service::FilesystemService;
 use crate::sync::service::SyncService;
-use crate::explorer::commands::{get_directory_entries, receive_dropped_paths, rename_file};
+use crate::explorer::commands::{get_directory_entries, receive_dropped_paths, rename_directory, rename_file};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub async fn run() {
@@ -73,6 +73,7 @@ pub async fn run() {
             run_sync,
             receive_dropped_paths,
             get_directory_entries,
+            rename_directory,
             rename_file
         ])
         .run(tauri::generate_context!())

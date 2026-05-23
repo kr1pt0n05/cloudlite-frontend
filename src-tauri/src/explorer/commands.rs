@@ -15,6 +15,15 @@ pub async fn get_directory_entries(
 }
 
 #[tauri::command]
+pub async fn rename_directory(
+    directory_id: String,
+    name: String,
+    state: tauri::State<'_, Arc<ExplorerService>>,
+) -> Result<String, String> {
+    state.rename_directory(directory_id, name).await
+}
+
+#[tauri::command]
 pub async fn rename_file(
     file_id: String,
     filename: String,
