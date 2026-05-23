@@ -13,6 +13,7 @@ import {
   fetchRootFolders,
   getParentDirectory,
   normalizeEntryPath,
+  renameFile,
   upsertEntry,
   type DirectoryPath,
   type RootFolder,
@@ -132,7 +133,7 @@ function beginRename(folder: RootFolder) {
   renameValue.value = folder.name;
 }
 
-function saveRename() {
+async function saveRename() {
   const id = renamingId.value;
   const name = renameValue.value.trim();
   if (!id || !name) {
@@ -140,10 +141,38 @@ function saveRename() {
     return;
   }
 
-  folders.value = folders.value.map((folder) => (folder.id === id ? { ...folder, name, modified: "Just now" } : folder));
+  const entry = folders.value.find((folder) => folder.id === id);
+  if (!entry || entry.name === name) {
+    renamingId.value = null;
+    renameValue.value = "";
+    return;
+  }
+
+  try {
+    const renamedName = entry.isDirectory ? name : await renameFile(id, name);
+    updateRenamedEntry(id, renamedName);
+  } catch (error) {
+    console.error("Failed to rename file", error);
+  } finally {
+    renamingId.value = null;
+    renameValue.value = "";
+  }
+}
+
+function updateRenamedEntry(id: string, name: string) {
+  folders.value = folders.value.map((folder) => renameEntry(folder, id, name));
   directoryCache.set(cacheKey(currentLocation()), folders.value);
-  renamingId.value = null;
-  renameValue.value = "";
+}
+
+function renameEntry(entry: RootFolder, id: string, name: string): RootFolder {
+  if (entry.id !== id) {
+    return entry;
+  }
+
+  const parentPath = getParentDirectory(entry.path);
+  const path = normalizeEntryPath([parentPath, name].filter(Boolean).join("/"));
+
+  return { ...entry, name, path, modified: "Just now" };
 }
 
 function deleteFolder(id: string) {

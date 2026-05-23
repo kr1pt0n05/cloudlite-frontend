@@ -39,50 +39,62 @@ impl ExplorerService {
         Ok(DirectoryEntries { directories, files })
     }
 
-    pub async fn rename_file(
-        &self,
-        file_id: String,
-        filename: String,
-    ) -> Result<(), String> {
-        let mut file = self.db.get_file_by_id(&file_id)
-        .await
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| "File not found".to_string())?;
+    pub async fn rename_file(&self, file_id: String, filename: String) -> Result<String, String> {
+        if filename.trim().is_empty() || Path::new(&filename).file_name().is_none() {
+            return Err("Filename cannot be empty".to_string());
+        }
 
-        println!("Renaming {} to {}", file_id, filename);
-        println!("File info: {:?}", file);
+        if Path::new(&filename).components().count() != 1 {
+            return Err("Filename cannot include path separators".to_string());
+        }
 
-        let relative_file_path = self.db.get_file_path_by_file_id(&file_id)
+        let mut file = self
+            .db
+            .get_file_by_id(&file_id)
+            .await
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "File not found".to_string())?;
+
+        let relative_parent_path = self
+            .db
+            .get_file_path_by_file_id(&file_id)
             .await
             .map_err(|e| e.to_string())?
             .unwrap_or_default();
 
-        println!("Relative file path: {:?}", relative_file_path);
+        let absolute_parent_path = self
+            .fs
+            .to_absolute_path(&relative_parent_path)
+            .map_err(|e| e.to_string())?;
+        let absolute_file_path = absolute_parent_path.join(&file.name);
 
-        let absolute_file_path = self.fs.to_absolute_path(&relative_file_path)
-        .map_err(|e| e.to_string())?;
-        println!("Absolute file path: {:?}", absolute_file_path);
+        let renamed_absolute_file_path = absolute_parent_path.join(&filename);
 
-        let renamed_absolute_file_path = absolute_file_path.clone().join(&filename);
-        println!("Renamed absolute file path: {:?}", renamed_absolute_file_path);
-
-        self.fs.rename(&absolute_file_path, &renamed_absolute_file_path)
+        self.fs
+            .rename(&absolute_file_path, &renamed_absolute_file_path)
             .map_err(|e| e.to_string())?;
 
-        let metadata = self.fs.metadata(&renamed_absolute_file_path)
+        let metadata = self
+            .fs
+            .metadata(&renamed_absolute_file_path)
             .map_err(|e| e.to_string())?;
 
         // Overwrite file
         file.name = filename;
-        file.updated_at = Option::from(metadata.modified()
-            .map(system_time_to_datetime)
-            .unwrap_or_else(|_| Utc::now().to_rfc3339()));
+        file.updated_at = Option::from(
+            metadata
+                .modified()
+                .map(system_time_to_datetime)
+                .unwrap_or_else(|_| Utc::now().to_rfc3339()),
+        );
+        let renamed_name = file.name.clone();
 
-        self.db.patch_local_file(file)
+        self.db
+            .patch_local_file(file)
             .await
             .map_err(|e| e.to_string())?;
 
-        Ok(())
+        Ok(renamed_name)
     }
 
     // ToDo: Handle errors, e.g. if a directory does not exist, give user feedback
