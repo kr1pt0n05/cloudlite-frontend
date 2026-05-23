@@ -63,13 +63,13 @@ export function getEntryName(path: string): string {
   return segments[segments.length - 1] ?? normalized;
 }
 
-export function createFilesystemEntry(path: string, isDirectory: boolean): RootFolder {
+export function createFilesystemEntry(id: string, path: string, isDirectory: boolean): RootFolder {
   const normalized = normalizeEntryPath(path);
   const name = getEntryName(normalized);
 
   return {
-    id: normalized,
-    directoryId: null,
+    id,
+    directoryId: isDirectory ? id : null,
     path: normalized,
     name,
     isDirectory,

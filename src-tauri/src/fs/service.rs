@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct FilesystemEntryCreated {
+    pub(crate) id: String,
     pub(crate) path: String,
     pub(crate) is_directory: bool,
 }

@@ -193,6 +193,7 @@ impl ExplorerService {
                             app.emit(
                                 "filesystem-entry-created",
                                 crate::fs::service::FilesystemEntryCreated {
+                                    id: id.clone(),
                                     path: event_path.clone(),
                                     is_directory: true,
                                 },
@@ -220,12 +221,13 @@ impl ExplorerService {
                                 .and_then(|relative_parent_path_str| {
                                     directory_ids.get(&relative_parent_path_str).cloned()
                                 });
+                            let id = Uuid::new_v4().to_string();
 
                             // Save to database
                             // ToDo: Batch
                             self.db
                                 .save_local_file(LocalFsFile {
-                                    id: Uuid::new_v4().to_string(),
+                                    id: id.clone(),
                                     name: entry.file_name().unwrap().to_string_lossy().to_string(), // ToDo: Handle error
                                     directory: directory_id, // ToDo: Query directory beforehand and insert id here
                                     checksum: None,          // ToDo: Calculate checksum
@@ -246,6 +248,7 @@ impl ExplorerService {
                             app.emit(
                                 "filesystem-entry-created",
                                 crate::fs::service::FilesystemEntryCreated {
+                                    id,
                                     path: event_path,
                                     is_directory: false,
                                 },

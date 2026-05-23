@@ -42,6 +42,7 @@ type DirectoryLocation = {
 };
 
 type FilesystemEntryCreated = {
+  id: string;
   path: string;
   isDirectory: boolean;
 };
@@ -307,8 +308,9 @@ function handleFilesystemEntryCreated(payload: FilesystemEntryCreated) {
     return;
   }
 
-  folders.value = upsertEntry(folders.value, createFilesystemEntry(path, payload.isDirectory));
+  folders.value = upsertEntry(folders.value, createFilesystemEntry(payload.id, path, payload.isDirectory));
   directoryCache.set(cacheKey(currentLocation()), folders.value);
+  rememberDirectoryIds(folders.value);
 }
 
 async function loadDirectory(location: DirectoryLocation, sourceFolder?: RootFolder, parentLocation?: DirectoryLocation) {
