@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::fs;
+use std::fs::Metadata;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Serialize)]
@@ -31,6 +32,13 @@ impl FilesystemService {
             .map_err(|_| format!("Path is not inside base path: {}", path.display()))
     }
 
+    pub fn to_absolute_path(&self, path: &Path) -> Result<PathBuf, String> {
+        PathBuf::from(self.get_base_path())
+            .join(path)
+            .canonicalize()
+            .map_err(|e| format!("Failed to resolve absolute path: {}", e))
+    }
+
     pub fn create_directory<P: AsRef<Path>>(&self,path: &P) -> Result<(), String> {
         fs::create_dir(path.as_ref()).map_err(|e| format!("Failed to create directory: {}", e))?;
         Ok(())
@@ -40,6 +48,15 @@ impl FilesystemService {
         fs::create_dir_all(path.as_ref())
             .map_err(|e| format!("Failed to create directories: {}", e))?;
         Ok(())
+    }
+
+    pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(&self, from: P, to: Q) -> Result<(), String> {
+        fs::rename(from.as_ref(), to.as_ref()).map_err(|e| format!("Failed to rename: {}", e))?;
+        Ok(())
+    }
+
+    pub fn metadata<P: AsRef<Path>>(&self, path: P) -> Result<Metadata, String> {
+        fs::metadata(path.as_ref()).map_err(|e| format!("Failed to get metadata: {}", e))
     }
 
     /// Takes "/Users/name/Desktop/MyFolder"

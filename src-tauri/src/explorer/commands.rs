@@ -13,6 +13,15 @@ pub async fn get_directory_entries(
 }
 
 #[tauri::command]
+pub async fn rename_file(
+    file_id: String,
+    filename: String,
+    state: tauri::State<'_, Arc<ExplorerService>>,
+) -> Result<(), String> {
+    state.rename_file(file_id, filename).await
+}
+
+#[tauri::command]
 pub async fn receive_dropped_paths(
     paths: Vec<String>,
     destination_path: Option<String>,
