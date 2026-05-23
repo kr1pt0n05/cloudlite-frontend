@@ -108,6 +108,17 @@ impl DBService {
         Ok(())
     }
 
+    pub async fn delete_local_directory(&self, id: &str) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "DELETE FROM local_fs_directories
+            WHERE id = ?1",
+            id
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn get_subdirectories(
         &self,
         parent_id: &Option<String>,

@@ -9,6 +9,7 @@ import FilesToolbar from "../components/FilesToolbar.vue";
 import FoldersTable from "../components/FoldersTable.vue";
 import {
   createFilesystemEntry,
+  deleteDirectory,
   deleteFile,
   fetchDirectoryEntries,
   fetchRootFolders,
@@ -184,14 +185,16 @@ async function deleteFolder(id: string) {
     return;
   }
 
-  if (!entry.isDirectory) {
-    try {
+  try {
+    if (entry.isDirectory) {
+      await deleteDirectory(entry.id);
+    } else {
       await deleteFile(id);
-    } catch (error) {
-      console.error("Failed to delete file", error);
-      actionFolderId.value = null;
-      return;
     }
+  } catch (error) {
+    console.error(`Failed to delete ${entry.isDirectory ? "directory" : "file"}`, error);
+    actionFolderId.value = null;
+    return;
   }
 
   folders.value = folders.value.filter((folder) => folder.id !== id);

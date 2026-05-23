@@ -187,6 +187,27 @@ impl ExplorerService {
         Ok(())
     }
 
+    pub async fn delete_directory(&self, directory_id: String) -> Result<(), String> {
+        let relative_path = self
+            .db
+            .get_local_directory_path_by_id(&directory_id)
+            .await
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "Directory not found".to_string())?;
+        let absolute_path = self
+            .fs
+            .to_absolute_path(&relative_path)
+            .map_err(|e| e.to_string())?;
+
+        self.fs.remove_directory_all(&absolute_path)?;
+        self.db
+            .delete_local_directory(&directory_id)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
     // ToDo: Handle errors, e.g. if a directory does not exist, give user feedback
     // ToDo: Refactor this function
     pub async fn write_dropped_paths(

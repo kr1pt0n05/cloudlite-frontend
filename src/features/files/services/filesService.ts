@@ -138,6 +138,10 @@ export function deleteFile(fileId: string): Promise<void> {
   return invoke<void>("delete_file", { fileId });
 }
 
+export function deleteDirectory(directoryId: string): Promise<void> {
+  return invoke<void>("delete_directory", { directoryId });
+}
+
 export function upsertEntry(entries: RootFolder[], entry: RootFolder): RootFolder[] {
   if (entries.some((item) => item.path === entry.path)) {
     return entries;

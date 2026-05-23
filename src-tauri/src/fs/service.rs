@@ -64,6 +64,14 @@ impl FilesystemService {
         }
     }
 
+    pub fn remove_directory_all<P: AsRef<Path>>(&self, path: P) -> Result<(), String> {
+        match fs::remove_dir_all(path.as_ref()) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(format!("Failed to delete directory: {}", error)),
+        }
+    }
+
     pub fn metadata<P: AsRef<Path>>(&self, path: P) -> Result<Metadata, String> {
         fs::metadata(path.as_ref()).map_err(|e| format!("Failed to get metadata: {}", e))
     }
