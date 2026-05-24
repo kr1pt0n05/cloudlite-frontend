@@ -13,7 +13,9 @@ use crate::auth::commands::{begin_login, confirm_login, is_authenticated};
 use crate::sync::commands::run_sync;
 use crate::db::service::DBService;
 use crate::fs::service::FilesystemService;
+use crate::sync::queue::SyncQueueService;
 use crate::sync::service::SyncService;
+use crate::sync::worker::SyncWorkerService;
 use crate::explorer::commands::{delete_directory, delete_file, get_directory_entries, receive_dropped_paths, rename_directory, rename_file};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -34,6 +36,8 @@ pub async fn run() {
     let db_service = Arc::new(DBService::new().await);
 
     let fs_service = Arc::new(FilesystemService::new());
+    let sync_queue_service = Arc::new(SyncQueueService::new(Arc::clone(&db_service)));
+    let sync_worker_service = Arc::new(SyncWorkerService::new(Arc::clone(&sync_queue_service)));
 
     let explorer_service = Arc::new(explorer::service::ExplorerService::new(
         Arc::clone(&db_service),
@@ -65,6 +69,8 @@ pub async fn run() {
         .manage(api_service)
         .manage(db_service)
         .manage(fs_service)
+        .manage(sync_queue_service)
+        .manage(sync_worker_service)
         .manage(explorer_service)
         .manage(sync_service)
         .invoke_handler(tauri::generate_handler![

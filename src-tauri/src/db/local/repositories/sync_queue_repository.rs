@@ -93,6 +93,8 @@ impl DBService {
     }
 
     pub async fn get_pending_jobs(&self, limit: i64) -> Result<Vec<SyncQueueJob>, sqlx::Error> {
+        let state = SyncQueueJobState::Pending.as_str();
+
         let rows = sqlx::query!(
             r#"
             SELECT
@@ -107,10 +109,11 @@ impl DBService {
                 created_at AS "created_at!",
                 updated_at AS "updated_at!"
             FROM sync_queue_jobs
-            WHERE state = 'pending'
+            WHERE state = ?1
             ORDER BY created_at ASC
-            LIMIT ?1
+            LIMIT ?2
             "#,
+            state,
             limit
         )
         .fetch_all(&self.pool)
