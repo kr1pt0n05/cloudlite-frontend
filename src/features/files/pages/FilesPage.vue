@@ -9,10 +9,14 @@ import FilesToolbar from "../components/FilesToolbar.vue";
 import FoldersTable from "../components/FoldersTable.vue";
 import {
   createFilesystemEntry,
+  deleteDirectory,
+  deleteFile,
   fetchDirectoryEntries,
   fetchRootFolders,
   getParentDirectory,
   normalizeEntryPath,
+  renameDirectory,
+  renameFile,
   upsertEntry,
   type DirectoryPath,
   type RootFolder,
@@ -41,6 +45,7 @@ type DirectoryLocation = {
 };
 
 type FilesystemEntryCreated = {
+  id: string;
   path: string;
   isDirectory: boolean;
 };
@@ -132,7 +137,7 @@ function beginRename(folder: RootFolder) {
   renameValue.value = folder.name;
 }
 
-function saveRename() {
+async function saveRename() {
   const id = renamingId.value;
   const name = renameValue.value.trim();
   if (!id || !name) {
@@ -140,13 +145,58 @@ function saveRename() {
     return;
   }
 
-  folders.value = folders.value.map((folder) => (folder.id === id ? { ...folder, name, modified: "Just now" } : folder));
-  directoryCache.set(cacheKey(currentLocation()), folders.value);
-  renamingId.value = null;
-  renameValue.value = "";
+  const entry = folders.value.find((folder) => folder.id === id);
+  if (!entry || entry.name === name) {
+    renamingId.value = null;
+    renameValue.value = "";
+    return;
+  }
+
+  try {
+    const renamedName = entry.isDirectory ? await renameDirectory(id, name) : await renameFile(id, name);
+    updateRenamedEntry(id, renamedName);
+  } catch (error) {
+    console.error(`Failed to rename ${entry.isDirectory ? "directory" : "file"}`, error);
+  } finally {
+    renamingId.value = null;
+    renameValue.value = "";
+  }
 }
 
-function deleteFolder(id: string) {
+function updateRenamedEntry(id: string, name: string) {
+  folders.value = folders.value.map((folder) => renameEntry(folder, id, name));
+  directoryCache.set(cacheKey(currentLocation()), folders.value);
+}
+
+function renameEntry(entry: RootFolder, id: string, name: string): RootFolder {
+  if (entry.id !== id) {
+    return entry;
+  }
+
+  const parentPath = getParentDirectory(entry.path);
+  const path = normalizeEntryPath([parentPath, name].filter(Boolean).join("/"));
+
+  return { ...entry, name, path, modified: "Just now" };
+}
+
+async function deleteFolder(id: string) {
+  const entry = folders.value.find((folder) => folder.id === id);
+  if (!entry) {
+    return;
+  }
+
+  try {
+    if (entry.isDirectory) {
+      await deleteDirectory(entry.id);
+    } else {
+      await deleteFile(id);
+    }
+  } catch (error) {
+    console.error(`Failed to delete ${entry.isDirectory ? "directory" : "file"}`, error);
+    actionFolderId.value = null;
+    return;
+  }
+
   folders.value = folders.value.filter((folder) => folder.id !== id);
   directoryCache.set(cacheKey(currentLocation()), folders.value);
 
@@ -266,7 +316,7 @@ async function handleDroppedPaths(paths: string[]) {
   }
 
   try {
-    await invoke<void>("receive_dropped_paths", { paths, destinationPath: currentDirectory.value });
+    await invoke<void>("receive_dropped_paths", { paths, destinationDirectoryId: currentLocation().directoryId });
   } catch (error) {
     console.error("Failed to process dropped files", error);
   }
@@ -278,8 +328,9 @@ function handleFilesystemEntryCreated(payload: FilesystemEntryCreated) {
     return;
   }
 
-  folders.value = upsertEntry(folders.value, createFilesystemEntry(path, payload.isDirectory));
+  folders.value = upsertEntry(folders.value, createFilesystemEntry(payload.id, path, payload.isDirectory));
   directoryCache.set(cacheKey(currentLocation()), folders.value);
+  rememberDirectoryIds(folders.value);
 }
 
 async function loadDirectory(location: DirectoryLocation, sourceFolder?: RootFolder, parentLocation?: DirectoryLocation) {

@@ -121,7 +121,7 @@ function toggleActions(id: string) {
                   @input="emit('update:renameValue', ($event.target as HTMLInputElement).value)"
                   @keydown.enter.prevent="emit('saveRename')"
                   @keydown.esc.prevent="emit('update:renamingId', null)"
-                  @blur="emit('saveRename')"
+                  @blur="emit('update:renamingId', null)"
                 />
                 <span v-else class="truncate font-medium text-foreground">{{ folder.name }}</span>
               </div>

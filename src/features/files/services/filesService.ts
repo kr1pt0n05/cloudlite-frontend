@@ -20,7 +20,6 @@ export type DirectoryPath = string | null;
 type LocalFsDirectory = {
   id: string;
   name: string;
-  path: string;
   parent: string | null;
   createdAt: string;
   updatedAt: string | null;
@@ -63,13 +62,13 @@ export function getEntryName(path: string): string {
   return segments[segments.length - 1] ?? normalized;
 }
 
-export function createFilesystemEntry(path: string, isDirectory: boolean): RootFolder {
+export function createFilesystemEntry(id: string, path: string, isDirectory: boolean): RootFolder {
   const normalized = normalizeEntryPath(path);
   const name = getEntryName(normalized);
 
   return {
-    id: normalized,
-    directoryId: null,
+    id,
+    directoryId: isDirectory ? id : null,
     path: normalized,
     name,
     isDirectory,
@@ -84,13 +83,13 @@ export function createFilesystemEntry(path: string, isDirectory: boolean): RootF
 export async function fetchDirectoryEntries(directoryId: string | null, parentPath: DirectoryPath): Promise<RootFolder[]> {
   const entries = await invoke<DirectoryEntries>("get_directory_entries", { directoryId });
   return [
-    ...entries.directories.map((directory) => createDirectoryEntry(directory)),
+    ...entries.directories.map((directory) => createDirectoryEntry(directory, parentPath)),
     ...entries.files.map((file) => createFileEntry(file, parentPath)),
   ];
 }
 
-export function createDirectoryEntry(directory: LocalFsDirectory): RootFolder {
-  const normalized = normalizeEntryPath(directory.path);
+export function createDirectoryEntry(directory: LocalFsDirectory, parentPath: DirectoryPath): RootFolder {
+  const normalized = normalizeEntryPath([parentPath, directory.name].filter(Boolean).join("/"));
 
   return {
     id: directory.id,
@@ -125,6 +124,22 @@ export function createFileEntry(file: LocalFsFile, parentPath: DirectoryPath): R
 
 export async function fetchRootFolders(): Promise<RootFolder[]> {
   return fetchDirectoryEntries(null, null);
+}
+
+export function renameFile(fileId: string, filename: string): Promise<string> {
+  return invoke<string>("rename_file", { fileId, filename });
+}
+
+export function renameDirectory(directoryId: string, name: string): Promise<string> {
+  return invoke<string>("rename_directory", { directoryId, name });
+}
+
+export function deleteFile(fileId: string): Promise<void> {
+  return invoke<void>("delete_file", { fileId });
+}
+
+export function deleteDirectory(directoryId: string): Promise<void> {
+  return invoke<void>("delete_directory", { directoryId });
 }
 
 export function upsertEntry(entries: RootFolder[], entry: RootFolder): RootFolder[] {
