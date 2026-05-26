@@ -8,12 +8,12 @@ The app provides the client UI for logging in, browsing synced files and folders
 
 ## Scope
 
-- [ ] Provide a desktop application shell using Tauri, Vue, and TypeScript.
-- [ ] Authenticate users through the CloudLite Keycloak OAuth2 flow.
-- [ ] Browse synchronized files and folders in the desktop UI.
-- [ ] Accept local files and folders through drag-and-drop ingestion.
+- [x] Provide a desktop application shell using Tauri, Vue, and TypeScript.
+- [x] Authenticate users through the CloudLite Keycloak OAuth2 flow.
+- [x] Browse synchronized files and folders in the desktop UI.
+- [x] Accept local files and folders through drag-and-drop ingestion.
 - [ ] Synchronize changes with the CloudLite backend.
-- [ ] Execute filesystem and synchronization commands through the Rust/Tauri backend.
+- [x] Execute filesystem and synchronization commands through the Rust/Tauri backend.
 
 CloudLite backend repository: [cloudlite-backend](https://github.com/kr1pt0n05/cloudlite-backend)
 
