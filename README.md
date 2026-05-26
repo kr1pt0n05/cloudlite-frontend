@@ -4,6 +4,8 @@ CloudLite Frontend is a Tauri desktop app built with Vue and TypeScript. It is p
 
 The app provides the client UI for logging in, browsing synced files and folders, and sending local file or directory actions to the Rust backend.
 
+![CloudLite explorer view](docs/screenshots/screenshot_explorer.png)
+
 ## Scope
 
 - [ ] Provide a desktop application shell using Tauri, Vue, and TypeScript.
@@ -13,7 +15,7 @@ The app provides the client UI for logging in, browsing synced files and folders
 - [ ] Synchronize changes with the CloudLite backend.
 - [ ] Execute filesystem and synchronization commands through the Rust/Tauri backend.
 
-CloudLite backend repository: TODO: add backend repository URL.
+CloudLite backend repository: [cloudlite-backend](https://github.com/kr1pt0n05/cloudlite-backend)
 
 ## Architecture
 
@@ -87,9 +89,3 @@ npm run dev          # Start only the Vite web development server
 npm run build        # Type-check and build the frontend
 npm run tauri -- dev # Run the desktop app in development mode
 ```
-
-## Screenshots
-
-### Explorer
-
-![CloudLite explorer view](docs/screenshots/screenshot_explorer.png)
